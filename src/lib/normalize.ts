@@ -57,6 +57,15 @@ export function compareClassroom(a: string, b: string): number {
   return a.localeCompare(b, 'th');
 }
 
+/** เรียงเลขที่แบบตัวเลข (ค่าว่างไว้ท้าย) */
+export function compareStudentNo(a: string, b: string): number {
+  const na = Number(a);
+  const nb = Number(b);
+  if (a && b && Number.isFinite(na) && Number.isFinite(nb)) return na - nb;
+  if (!a || !b) return (a ? 0 : 1) - (b ? 0 : 1);
+  return a.localeCompare(b, 'th');
+}
+
 export function levelOf(classroom: string): string {
   const m = classroom.match(/^ม\.(\d)\//);
   return m ? `ม.${m[1]}` : classroom;

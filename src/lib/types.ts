@@ -18,6 +18,8 @@ export interface GradeRecord {
   /** คีย์คงที่ ใช้ผูกกับสถานะการติดตาม (สร้างจากนักเรียน + วิชา) */
   key: string;
   studentId: string;
+  /** เลขที่ในห้อง (ถ้ามี) */
+  studentNo: string;
   studentName: string;
   /** รูปแบบมาตรฐาน เช่น "ม.1/1" */
   classroom: string;

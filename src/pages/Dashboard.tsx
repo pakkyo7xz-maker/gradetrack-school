@@ -22,6 +22,7 @@ interface Props {
   enrollment: EnrollmentMap;
   goTracking: (f: Partial<Filters>) => void;
   goEnrollment: () => void;
+  goTeacher: (name: string) => void;
 }
 
 /** ตัวกรองหน้าติดตามที่ตรงกับกลุ่ม */
@@ -32,7 +33,7 @@ function filtersFor(g: GroupStats, result?: GradeResult): Partial<Filters> {
   return f;
 }
 
-export default function Dashboard({ rows, enrollment, goTracking, goEnrollment }: Props) {
+export default function Dashboard({ rows, enrollment, goTracking, goEnrollment, goTeacher }: Props) {
   const [tab, setTab] = useState<Tab>('overview');
   const [drill, setDrill] = useState<Drill | null>(null);
   const [room, setRoom] = useState('');
@@ -108,8 +109,8 @@ export default function Dashboard({ rows, enrollment, goTracking, goEnrollment }
           <div className="border-b border-slate-100 px-4 py-3 text-sm font-semibold">ครูผู้สอน ({teachers.length} คน)</div>
           <TeacherTable
             teachers={teachers}
-            onSelectTeacher={(t) => goTracking({ teacher: t })}
-            onDrill={(t) => setDrill({ title: `${t.label} · รายชื่อนักเรียน`, rows: t.rows, view: 'students', filters: { teacher: t.label } })}
+            onSelectTeacher={goTeacher}
+            onDrill={(t) => goTeacher(t.label)}
           />
           <p className="px-4 py-2 text-xs text-slate-500">ไม่มีร้อยละรายครู เพราะไม่มีจำนวนนักเรียนที่ครูแต่ละคนสอนทั้งหมด</p>
         </div>

@@ -59,6 +59,7 @@ export default function App() {
   const [page, setPage] = useState<Page>('dashboard');
   const [filters, setFilters] = useState<Filters>(emptyFilters);
   const [classroom, setClassroom] = useState('');
+  const [teacher, setTeacher] = useState('');
   const [saveError, setSaveError] = useState(false);
   const [notice, setNotice] = useState<Notice | null>(null);
 
@@ -88,6 +89,10 @@ export default function App() {
   const go = (p: Page) => {
     setPage(p);
     window.scrollTo({ top: 0 });
+  };
+  const goTeacher = (name: string) => {
+    setTeacher(name);
+    go('teachers');
   };
   const goTracking = (f: Partial<Filters>) => {
     setFilters({ ...emptyFilters(), ...f });
@@ -149,7 +154,7 @@ export default function App() {
             {NAV.map((n) => (
               <button
                 key={n.id}
-                onClick={() => go(n.id)}
+                onClick={() => { if (n.id === 'teachers') setTeacher(''); go(n.id); }}
                 className={`flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition ${page === n.id ? 'bg-blue-50 text-blue-700' : 'text-slate-600 hover:bg-slate-50'}`}
               >
                 <span className="text-base">{n.icon}</span>
@@ -168,7 +173,7 @@ export default function App() {
           {NAV.map((n) => (
             <button
               key={n.id}
-              onClick={() => go(n.id)}
+              onClick={() => { if (n.id === 'teachers') setTeacher(''); go(n.id); }}
               className={`shrink-0 whitespace-nowrap rounded-full px-3 py-1.5 text-xs font-medium ${page === n.id ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-600'}`}
             >
               {n.icon} {n.label}
@@ -193,10 +198,10 @@ export default function App() {
           )}
           {saveError && <Alert tone="red">บันทึกลงเบราว์เซอร์ไม่สำเร็จ (พื้นที่อาจเต็มหรือถูกปิดกั้น) — กรุณาส่งออกไฟล์สำรองข้อมูล</Alert>}
 
-          {page === 'dashboard' && <Dashboard rows={rows} enrollment={enrollment} goTracking={goTracking} goEnrollment={() => go('enrollment')} />}
+          {page === 'dashboard' && <Dashboard rows={rows} enrollment={enrollment} goTracking={goTracking} goEnrollment={() => go('enrollment')} goTeacher={goTeacher} />}
           {page === 'classrooms' && <Classrooms rows={rows} classroom={classroom} setClassroom={setClassroom} onUpdate={updateTracking} />}
           {page === 'tracking' && <TrackingPage rows={rows} filters={filters} setFilters={setFilters} onUpdate={updateTracking} />}
-          {page === 'teachers' && <Teachers rows={rows} goTracking={goTracking} />}
+          {page === 'teachers' && <Teachers rows={rows} selected={teacher} setSelected={setTeacher} onUpdate={updateTracking} goTracking={goTracking} />}
           {page === 'enrollment' && <Enrollment rows={rows} enrollment={enrollment} setEnrollment={setEnrollment} />}
           {page === 'import' && <Import existingCount={records.length} isSample={meta?.source === 'sample'} tracking={tracking} enrollment={enrollment} savedMapping={mapping} onImport={handleImport} />}
           {page === 'backup' && (

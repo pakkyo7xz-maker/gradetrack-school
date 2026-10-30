@@ -5,6 +5,7 @@ import type { GradeRecord } from './types';
 
 export type FieldKey =
   | 'studentId'
+  | 'studentNo'
   | 'studentName'
   | 'firstName'
   | 'lastName'
@@ -29,6 +30,7 @@ export interface FieldDef {
 
 export const FIELDS: FieldDef[] = [
   { key: 'studentId', label: 'รหัสนักเรียน', aliases: ['รหัสนักเรียน', 'เลขประจำตัว', 'เลขประจำตัวนักเรียน', 'รหัส', 'studentid', 'id'] },
+  { key: 'studentNo', label: 'เลขที่', aliases: ['เลขที่', 'เลขที่นักเรียน', 'no'] },
   { key: 'studentName', label: 'ชื่อ-นามสกุล', aliases: ['ชื่อ-นามสกุล', 'ชื่อ - นามสกุล', 'ชื่อนามสกุล', 'ชื่อ-สกุล', 'ชื่อสกุล', 'ชื่อนักเรียน', 'นักเรียน', 'name', 'fullname'] },
   { key: 'firstName', label: 'ชื่อ (แยกคอลัมน์)', aliases: ['ชื่อ', 'firstname'] },
   { key: 'lastName', label: 'นามสกุล (แยกคอลัมน์)', aliases: ['นามสกุล', 'สกุล', 'lastname', 'surname'] },
@@ -47,7 +49,7 @@ export const FIELDS: FieldDef[] = [
 export type ColumnMapping = Partial<Record<FieldKey, string>>;
 
 /** ฟิลด์ที่ชื่อสั้น/กำกวม ให้จับคู่เฉพาะแบบตรงทั้งคำ */
-const NO_CONTAINS = new Set<FieldKey>(['firstName', 'lastName', 'level', 'room', 'studentId', 'male', 'female']);
+const NO_CONTAINS = new Set<FieldKey>(['firstName', 'lastName', 'level', 'room', 'studentId', 'studentNo', 'male', 'female']);
 
 /** จับคู่หัวคอลัมน์อัตโนมัติ: ตรงทั้งคำก่อน แล้วค่อยดูว่ามีคำนั้นอยู่ในหัวคอลัมน์ */
 export function autoDetectMapping(headers: string[], saved?: ColumnMapping, fields: FieldDef[] = FIELDS): ColumnMapping {
@@ -165,6 +167,7 @@ export function parseRows(rows: Record<string, unknown>[], m: ColumnMapping, hea
 
     const base = {
       studentId: cellText(get(r, 'studentId')),
+      studentNo: cellText(get(r, 'studentNo')),
       studentName,
       classroom,
       subjectCode,

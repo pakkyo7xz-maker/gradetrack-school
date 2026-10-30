@@ -37,7 +37,7 @@ const ROWS: S[] = [
 
 export function sampleRecords(): GradeRecord[] {
   return ROWS.map(([studentId, studentName, classroom, subjectCode, subjectName, teacher, result]) => {
-    const base = { studentId, studentName, classroom, subjectCode, subjectName, teacher, result, homeroomTeacher: HOMEROOM[classroom] ?? '', term: '1/2569' };
+    const base = { studentId, studentNo: String(Number(studentId.slice(4))), studentName, classroom, subjectCode, subjectName, teacher, result, homeroomTeacher: HOMEROOM[classroom] ?? '', term: '1/2569' };
     return { key: recordKey(base), ...base };
   });
 }

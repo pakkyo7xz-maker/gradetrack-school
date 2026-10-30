@@ -5,7 +5,7 @@ import { Empty, OverdueBadge, ResultBadge, STATUS_STYLE } from './ui';
 
 export type UpdateTracking = (key: string, patch: Partial<Tracking>) => void;
 
-function StatusSelect({ row, onUpdate }: { row: Row; onUpdate: UpdateTracking }) {
+export function StatusSelect({ row, onUpdate }: { row: Row; onUpdate: UpdateTracking }) {
   return (
     <select
       value={row.tracking.status}
@@ -79,7 +79,7 @@ export default function TrackingTable({ rows: allRows, onUpdate, hideClassroom }
               <tr key={r.key} className={r.overdue ? 'bg-red-50/40' : 'hover:bg-slate-50/60'}>
                 <td className="td whitespace-nowrap text-xs text-slate-500">{r.studentId || '-'}</td>
                 <td className="td whitespace-nowrap font-medium text-slate-900">{r.studentName}</td>
-                {!hideClassroom && <td className="td whitespace-nowrap">{r.classroom}</td>}
+                {!hideClassroom && <td className="td whitespace-nowrap">{r.classroom}{r.studentNo && <div className="text-xs text-slate-400">เลขที่ {r.studentNo}</div>}</td>}
                 <td className="td">
                   <div className="min-w-[9rem]">{r.subjectName}</div>
                   {r.subjectCode && r.subjectCode !== r.subjectName && <div className="text-xs text-slate-400">{r.subjectCode}</div>}

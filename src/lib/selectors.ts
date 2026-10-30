@@ -1,4 +1,4 @@
-import { compareClassroom, compact, levelOf, todayIso } from './normalize';
+import { compareClassroom, compareStudentNo, compact, levelOf, todayIso } from './normalize';
 import { emptyTracking, type Filters, type GradeRecord, type Row, type TrackingMap } from './types';
 
 export function buildRows(records: GradeRecord[], tracking: TrackingMap): Row[] {
@@ -8,7 +8,7 @@ export function buildRows(records: GradeRecord[], tracking: TrackingMap): Row[] 
       const t = tracking[r.key] ?? emptyTracking();
       return { ...r, tracking: t, overdue: !!t.dueDate && t.dueDate < today && t.status !== 'done' };
     })
-    .sort((a, b) => compareClassroom(a.classroom, b.classroom) || a.studentName.localeCompare(b.studentName, 'th') || a.subjectName.localeCompare(b.subjectName, 'th'));
+    .sort((a, b) => compareClassroom(a.classroom, b.classroom) || compareStudentNo(a.studentNo, b.studentNo) || a.studentName.localeCompare(b.studentName, 'th') || a.subjectName.localeCompare(b.subjectName, 'th'));
 }
 
 export const NO_TEACHER = 'ไม่ระบุครู';

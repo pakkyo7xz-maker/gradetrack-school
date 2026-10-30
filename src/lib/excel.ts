@@ -51,6 +51,7 @@ export function exportRowsToExcel(rows: Row[], fileName = `gradetrack-report-${s
     รหัสนักเรียน: r.studentId,
     'ชื่อ-นามสกุล': r.studentName,
     'ชั้น/ห้อง': r.classroom,
+    เลขที่: r.studentNo,
     รหัสวิชา: r.subjectCode,
     ชื่อรายวิชา: r.subjectName,
     ครูผู้สอน: r.teacher,
@@ -62,7 +63,7 @@ export function exportRowsToExcel(rows: Row[], fileName = `gradetrack-report-${s
     หมายเหตุ: r.tracking.note,
   }));
   const ws = XLSX.utils.json_to_sheet(data);
-  ws['!cols'] = [6, 12, 26, 9, 10, 24, 22, 22, 10, 16, 12, 10, 30].map((wch) => ({ wch }));
+  ws['!cols'] = [6, 12, 26, 9, 7, 10, 24, 22, 22, 10, 16, 12, 10, 30].map((wch) => ({ wch }));
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, 'รายงาน');
   return saveWorkbook(wb, fileName);

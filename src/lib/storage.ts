@@ -44,6 +44,7 @@ export function sanitizeRecords(v: unknown): GradeRecord[] {
     .map((r) => ({
       key: str(r.key),
       studentId: str(r.studentId),
+      studentNo: str(r.studentNo),
       studentName: str(r.studentName),
       classroom: str(r.classroom),
       subjectCode: str(r.subjectCode),

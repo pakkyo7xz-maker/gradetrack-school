@@ -24,9 +24,9 @@ export default function TeacherTable({ teachers, onSelectTeacher, onDrill }: { t
         <tbody className="divide-y divide-slate-100">
           {teachers.map((t) => (
             <tr key={t.key} className="hover:bg-slate-50/60">
-              <td className="td whitespace-nowrap">
-                <button className="font-medium text-blue-600 hover:underline" onClick={() => onSelectTeacher(t.label)}>{t.label}</button>
-                <div className="text-xs text-slate-400">{t.classrooms.join(', ')}</div>
+              <td className="td">
+                <button className="whitespace-nowrap font-medium text-blue-600 hover:underline" onClick={() => onSelectTeacher(t.label)}>{t.label}</button>
+                <div className="max-w-[14rem] text-xs text-slate-400">{t.classrooms.length} ห้อง: {t.classrooms.join(', ')}</div>
               </td>
               <td className="td">
                 <div className="flex min-w-[12rem] flex-wrap gap-1">

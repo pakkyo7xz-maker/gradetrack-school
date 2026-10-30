@@ -1,15 +1,28 @@
 import { useMemo, useState } from 'react';
-import StudentListModal, { type Drill } from '../components/StudentListModal';
 import TeacherTable from '../components/TeacherTable';
+import type { UpdateTracking } from '../components/TrackingTable';
 import { PageHeader } from '../components/ui';
 import { compareClassroom } from '../lib/normalize';
 import { teacherStats } from '../lib/stats';
 import type { Filters, Row } from '../lib/types';
+import TeacherDetail from './TeacherDetail';
 
-export default function Teachers({ rows, goTracking }: { rows: Row[]; goTracking: (f: Partial<Filters>) => void }) {
+interface Props {
+  rows: Row[];
+  selected: string;
+  setSelected: (name: string) => void;
+  onUpdate: UpdateTracking;
+  goTracking: (f: Partial<Filters>) => void;
+}
+
+export default function Teachers({ rows, selected, setSelected, onUpdate, goTracking }: Props) {
   const [q, setQ] = useState('');
-  const [drill, setDrill] = useState<Drill | null>(null);
   const all = useMemo(() => teacherStats(rows), [rows]);
+  const current = all.find((t) => t.label === selected);
+  const open = (name: string) => {
+    setSelected(name);
+    window.scrollTo({ top: 0 });
+  };
   const teachers = all.filter((t) => !q || t.label.toLowerCase().includes(q.toLowerCase()));
 
   // ครูประจำชั้น (ถ้ามีในไฟล์)
@@ -20,17 +33,19 @@ export default function Teachers({ rows, goTracking }: { rows: Row[]; goTracking
     }, {}),
   ).sort(([a], [b]) => compareClassroom(a, b));
 
+  if (current) return <TeacherDetail name={current.label} rows={current.rows} onBack={() => setSelected('')} onUpdate={onUpdate} goTracking={goTracking} />;
+
   return (
     <div>
-      <PageHeader title="ครูผู้สอน" subtitle="คลิกชื่อครูเพื่อดูรายการในหน้าติดตาม · คลิกจำนวนนักเรียนเพื่อดูรายชื่อ" />
+      <PageHeader title="ครูผู้สอน" subtitle="คลิกชื่อครูเพื่อดูว่านักเรียนคนไหนติดวิชาอะไร" />
       <div className="card overflow-hidden">
         <div className="border-b border-slate-100 p-4">
           <input className="input sm:max-w-xs" placeholder="ค้นหาชื่อครู…" value={q} onChange={(e) => setQ(e.target.value)} />
         </div>
         <TeacherTable
           teachers={teachers}
-          onSelectTeacher={(t) => goTracking({ teacher: t })}
-          onDrill={(t) => setDrill({ title: `${t.label} · รายชื่อนักเรียน`, rows: t.rows, view: 'students', filters: { teacher: t.label } })}
+          onSelectTeacher={open}
+          onDrill={(t) => open(t.label)}
         />
       </div>
 
@@ -47,7 +62,6 @@ export default function Teachers({ rows, goTracking }: { rows: Row[]; goTracking
           </div>
         </div>
       )}
-      <StudentListModal drill={drill} onClose={() => setDrill(null)} onOpenTracking={(f) => { setDrill(null); goTracking(f); }} />
     </div>
   );
 }

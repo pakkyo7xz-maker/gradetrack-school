@@ -6,5 +6,6 @@ dist
 data/
 *.xlsx
 *.xls
+*.csv
 gradetrack-backup-*.json
 *.tsbuildinfo

@@ -47,6 +47,7 @@ export interface Row extends GradeRecord {
 }
 
 export interface Filters {
+  level: string;
   classroom: string;
   teacher: string;
   result: '' | GradeResult;
@@ -54,4 +55,16 @@ export interface Filters {
   search: string;
 }
 
-export const emptyFilters = (): Filters => ({ classroom: '', teacher: '', result: '', status: '', search: '' });
+export const emptyFilters = (): Filters => ({ level: '', classroom: '', teacher: '', result: '', status: '', search: '' });
+
+/**
+ * จำนวนนักเรียนทั้งหมดต่อห้อง (ตัวหารของร้อยละ)
+ * ต้องมาจากข้อมูลที่เชื่อถือได้ (นำเข้าจากทะเบียน/กรอกเอง) — ห้ามประมาณค่า
+ */
+export interface Enrollment {
+  /** null = รู้ว่ามีห้องนี้ แต่ยังไม่มีจำนวนที่เชื่อถือได้ */
+  total: number | null;
+  source: 'import' | 'manual' | 'sample';
+  updatedAt: string;
+}
+export type EnrollmentMap = Record<string, Enrollment>;

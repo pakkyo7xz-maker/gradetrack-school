@@ -3,12 +3,13 @@ import { Alert, ConfirmDialog, PageHeader } from '../components/ui';
 import { exportBackup, readBackup, type Backup as BackupData } from '../lib/excel';
 import type { ColumnMapping } from '../lib/importMapping';
 import type { Meta } from '../lib/storage';
-import type { GradeRecord, TrackingMap } from '../lib/types';
+import type { EnrollmentMap, GradeRecord, TrackingMap } from '../lib/types';
 
 interface Props {
   records: GradeRecord[];
   tracking: TrackingMap;
   mapping?: ColumnMapping;
+  enrollment: EnrollmentMap;
   meta: Meta | null;
   onRestore: (b: BackupData) => void;
   onLoadSample: () => void;
@@ -18,7 +19,7 @@ interface Props {
 
 type Pending = { kind: 'restore'; data: BackupData; fileName: string } | { kind: 'sample' } | { kind: 'prune' } | { kind: 'clear' } | null;
 
-export default function Backup({ records, tracking, mapping, meta, onRestore, onLoadSample, onPruneOrphans, onClearAll }: Props) {
+export default function Backup({ records, tracking, mapping, enrollment, meta, onRestore, onLoadSample, onPruneOrphans, onClearAll }: Props) {
   const [pending, setPending] = useState<Pending>(null);
   const [msg, setMsg] = useState<{ tone: 'emerald' | 'red'; text: string } | null>(null);
   const keys = new Set(records.map((r) => r.key));
@@ -56,7 +57,7 @@ export default function Backup({ records, tracking, mapping, meta, onRestore, on
         <div className="card p-5 text-sm">
           <div className="font-semibold">ข้อมูลปัจจุบัน</div>
           <div className="mt-1 text-slate-600">
-            {records.length} รายการ · สถานะที่บันทึกไว้ {Object.keys(tracking).length} รายการ ·{' '}
+            {records.length} รายการ · สถานะที่บันทึกไว้ {Object.keys(tracking).length} รายการ · จำนวนนักเรียน {Object.keys(enrollment).length} ห้อง ·{' '}
             แหล่งที่มา: {meta?.source === 'import' ? `ไฟล์ ${meta.fileName ?? ''}` : meta?.source === 'backup' ? 'ไฟล์สำรอง' : meta?.source === 'empty' ? 'ไม่มีข้อมูล' : 'ข้อมูลตัวอย่าง'}
             {meta?.importedAt && ` (${new Date(meta.importedAt).toLocaleString('th-TH')})`}
           </div>
@@ -65,8 +66,8 @@ export default function Backup({ records, tracking, mapping, meta, onRestore, on
         <div className="grid gap-4 md:grid-cols-2">
           <div className="card p-5">
             <div className="font-semibold">ส่งออกไฟล์สำรอง</div>
-            <p className="mt-1 text-sm text-slate-500">บันทึกรายการทั้งหมด พร้อมสถานะ วันกำหนด หมายเหตุ และการจับคู่คอลัมน์ เป็นไฟล์ .json</p>
-            <button className="btn-primary mt-4" onClick={() => exportBackup(records, tracking, mapping)}>⬇ ดาวน์โหลดไฟล์สำรอง</button>
+            <p className="mt-1 text-sm text-slate-500">บันทึกรายการทั้งหมด พร้อมสถานะ วันกำหนด หมายเหตุ จำนวนนักเรียนต่อห้อง และการจับคู่คอลัมน์ เป็นไฟล์ .json</p>
+            <button className="btn-primary mt-4" onClick={() => exportBackup(records, tracking, mapping, enrollment)}>⬇ ดาวน์โหลดไฟล์สำรอง</button>
           </div>
           <div className="card p-5">
             <div className="font-semibold">นำเข้าไฟล์สำรอง</div>
@@ -80,8 +81,8 @@ export default function Backup({ records, tracking, mapping, meta, onRestore, on
 
         <div className="card divide-y divide-slate-100">
           <Action title="ล้างสถานะที่ไม่มีรายการคู่" desc={`สถานะการติดตามที่ไม่ตรงกับรายการปัจจุบัน ${orphans} รายการ (เช่น จากข้อมูลตัวอย่างหรือไฟล์เก่า)`} btn="ล้าง" disabled={orphans === 0} onClick={() => setPending({ kind: 'prune' })} />
-          <Action title="โหลดข้อมูลตัวอย่าง" desc="แทนที่รายการด้วยข้อมูลจำลองสำหรับทดลองใช้งาน" btn="โหลด" onClick={() => setPending({ kind: 'sample' })} />
-          <Action title="ลบข้อมูลทั้งหมด" desc="ลบรายการ สถานะ และการตั้งค่าทั้งหมดออกจากเบราว์เซอร์นี้" btn="ลบทั้งหมด" danger onClick={() => setPending({ kind: 'clear' })} />
+          <Action title="โหลดข้อมูลตัวอย่าง" desc="แทนที่รายการและจำนวนนักเรียนด้วยข้อมูลจำลองสำหรับทดลองใช้งาน" btn="โหลด" onClick={() => setPending({ kind: 'sample' })} />
+          <Action title="ลบข้อมูลทั้งหมด" desc="ลบรายการ สถานะ จำนวนนักเรียน และการตั้งค่าทั้งหมดออกจากเบราว์เซอร์นี้" btn="ลบทั้งหมด" danger onClick={() => setPending({ kind: 'clear' })} />
         </div>
       </div>
 
@@ -94,12 +95,12 @@ export default function Backup({ records, tracking, mapping, meta, onRestore, on
       >
         {pending?.kind === 'restore' && (
           <>
-            <p>ไฟล์ <b>{pending.fileName}</b> มี {pending.data.records.length} รายการ และสถานะ {Object.keys(pending.data.tracking).length} รายการ</p>
+            <p>ไฟล์ <b>{pending.fileName}</b> มี {pending.data.records.length} รายการ, สถานะ {Object.keys(pending.data.tracking).length} รายการ{pending.data.enrollment && `, จำนวนนักเรียน ${Object.keys(pending.data.enrollment).length} ห้อง`}</p>
             {pending.data.exportedAt && <p>ส่งออกเมื่อ {new Date(pending.data.exportedAt).toLocaleString('th-TH')}</p>}
             <p className="text-red-600">ข้อมูลปัจจุบันจะถูกแทนที่ทั้งหมด</p>
           </>
         )}
-        {pending?.kind === 'sample' && <p>รายการปัจจุบันจะถูกแทนที่ด้วยข้อมูลตัวอย่าง (สถานะการติดตามเดิมยังเก็บไว้)</p>}
+        {pending?.kind === 'sample' && <p>รายการและจำนวนนักเรียนปัจจุบันจะถูกแทนที่ด้วยข้อมูลตัวอย่าง (สถานะการติดตามเดิมยังเก็บไว้)</p>}
         {pending?.kind === 'prune' && <p>ลบสถานะ {orphans} รายการที่ไม่ตรงกับรายการปัจจุบัน</p>}
         {pending?.kind === 'clear' && <p className="text-red-600">ข้อมูลทั้งหมดจะถูกลบและกู้คืนไม่ได้ กรุณาส่งออกไฟล์สำรองก่อน</p>}
       </ConfirmDialog>

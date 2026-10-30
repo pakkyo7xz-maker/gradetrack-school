@@ -2,9 +2,9 @@ import type { ReactNode } from 'react';
 import { statusLabel, type GradeResult, type TrackingStatus } from '../lib/types';
 
 const RESULT_STYLE: Record<GradeResult, string> = {
-  '0': 'bg-red-50 text-red-700 ring-red-200',
-  ร: 'bg-amber-50 text-amber-700 ring-amber-200',
-  มส: 'bg-violet-50 text-violet-700 ring-violet-200',
+  '0': 'bg-rose-50 text-rose-700 ring-rose-200',
+  ร: 'bg-amber-50 text-amber-800 ring-amber-200',
+  มส: 'bg-indigo-50 text-indigo-700 ring-indigo-200',
 };
 
 export function ResultBadge({ result }: { result: GradeResult }) {

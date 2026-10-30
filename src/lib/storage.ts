@@ -1,12 +1,13 @@
 // เก็บข้อมูลใน localStorage ของเบราว์เซอร์ (ไม่มีการส่งข้อมูลออกนอกเครื่อง)
 import type { ColumnMapping } from './importMapping';
-import { GRADE_RESULTS, STATUSES, type GradeRecord, type Tracking, type TrackingMap } from './types';
+import { GRADE_RESULTS, STATUSES, type EnrollmentMap, type GradeRecord, type Tracking, type TrackingMap } from './types';
 
 const KEYS = {
   records: 'gradetrack.records.v1',
   tracking: 'gradetrack.tracking.v1',
   mapping: 'gradetrack.mapping.v1',
   meta: 'gradetrack.meta.v1',
+  enrollment: 'gradetrack.enrollment.v1',
 };
 
 export interface Meta {
@@ -80,3 +81,24 @@ export const saveRecords = (r: GradeRecord[]) => write(KEYS.records, r);
 export const saveTracking = (t: TrackingMap) => write(KEYS.tracking, t);
 export const saveMapping = (m: ColumnMapping) => write(KEYS.mapping, m);
 export const saveMeta = (m: Meta) => write(KEYS.meta, m);
+
+export function sanitizeEnrollment(v: unknown): EnrollmentMap {
+  const out: EnrollmentMap = {};
+  if (!v || typeof v !== 'object' || Array.isArray(v)) return out;
+  for (const [room, e] of Object.entries(v as Record<string, unknown>)) {
+    if (!room || !e || typeof e !== 'object') continue;
+    const o = e as Record<string, unknown>;
+    const total = o.total === null ? null : Number(o.total);
+    if (total !== null && (!Number.isInteger(total) || total <= 0 || total > 2000)) continue;
+    const source = o.source === 'import' || o.source === 'manual' || o.source === 'sample' ? o.source : 'manual';
+    out[room] = { total, source, updatedAt: str(o.updatedAt) };
+  }
+  return out;
+}
+
+/** null = ยังไม่เคยบันทึก (ใช้ตัดสินว่าจะโหลดข้อมูลตัวอย่างหรือไม่) */
+export const loadEnrollment = () => {
+  const v = read<unknown>(KEYS.enrollment);
+  return v === null ? null : sanitizeEnrollment(v);
+};
+export const saveEnrollment = (e: EnrollmentMap) => write(KEYS.enrollment, e);

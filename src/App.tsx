@@ -2,34 +2,46 @@ import { useEffect, useMemo, useState } from 'react';
 import { Alert } from './components/ui';
 import type { Backup as BackupData } from './lib/excel';
 import type { ColumnMapping } from './lib/importMapping';
-import { sampleRecords, sampleTracking } from './lib/sampleData';
+import { sampleEnrollment, sampleRecords, sampleTracking } from './lib/sampleData';
 import { buildRows } from './lib/selectors';
 import * as store from './lib/storage';
-import { emptyFilters, emptyTracking, type Filters, type GradeRecord, type Tracking, type TrackingMap } from './lib/types';
+import { emptyFilters, emptyTracking, type EnrollmentMap, type Filters, type GradeRecord, type Tracking, type TrackingMap } from './lib/types';
 import Backup from './pages/Backup';
 import Classrooms from './pages/Classrooms';
 import Dashboard from './pages/Dashboard';
+import Enrollment from './pages/Enrollment';
 import Import, { type ImportMode } from './pages/Import';
 import Teachers from './pages/Teachers';
 import TrackingPage from './pages/Tracking';
 
-type Page = 'dashboard' | 'classrooms' | 'tracking' | 'teachers' | 'import' | 'backup';
+type Page = 'dashboard' | 'classrooms' | 'tracking' | 'teachers' | 'enrollment' | 'import' | 'backup';
 
 const NAV: { id: Page; label: string; icon: string }[] = [
-  { id: 'dashboard', label: 'ภาพรวม', icon: '📊' },
+  { id: 'dashboard', label: 'สถิติ/ภาพรวม', icon: '📊' },
   { id: 'classrooms', label: 'ห้องเรียน', icon: '🏫' },
   { id: 'tracking', label: 'ติดตาม/รายงาน', icon: '📋' },
   { id: 'teachers', label: 'ครูผู้สอน', icon: '👩‍🏫' },
+  { id: 'enrollment', label: 'จำนวนนักเรียน', icon: '👥' },
   { id: 'import', label: 'นำเข้า Excel', icon: '📥' },
   { id: 'backup', label: 'สำรองข้อมูล', icon: '💾' },
 ];
 
 function initialState() {
   const stored = store.loadRecords();
-  if (stored) return { records: stored, tracking: store.loadTracking(), meta: store.loadMeta() };
+  const meta = store.loadMeta();
+  if (stored) {
+    // ผู้ใช้เวอร์ชันก่อนที่ยังใช้ข้อมูลตัวอย่าง: เติมจำนวนนักเรียนตัวอย่างให้
+    const enrollment = store.loadEnrollment() ?? (meta?.source === 'sample' ? sampleEnrollment() : {});
+    return { records: stored, tracking: store.loadTracking(), meta, enrollment };
+  }
   // ครั้งแรก: แสดงข้อมูลตัวอย่าง
   const records = sampleRecords();
-  return { records, tracking: { ...sampleTracking(records), ...store.loadTracking() }, meta: { source: 'sample' } as store.Meta };
+  return {
+    records,
+    tracking: { ...sampleTracking(records), ...store.loadTracking() },
+    meta: { source: 'sample' } as store.Meta,
+    enrollment: store.loadEnrollment() ?? sampleEnrollment(),
+  };
 }
 
 export default function App() {
@@ -37,6 +49,7 @@ export default function App() {
   const [records, setRecords] = useState<GradeRecord[]>(init.records);
   const [tracking, setTracking] = useState<TrackingMap>(init.tracking);
   const [meta, setMeta] = useState<store.Meta | null>(init.meta);
+  const [enrollment, setEnrollment] = useState<EnrollmentMap>(init.enrollment);
   const [mapping, setMapping] = useState<ColumnMapping | undefined>(store.loadMapping);
   const [page, setPage] = useState<Page>('dashboard');
   const [filters, setFilters] = useState<Filters>(emptyFilters);
@@ -44,9 +57,9 @@ export default function App() {
   const [saveError, setSaveError] = useState(false);
 
   useEffect(() => {
-    const ok = store.saveRecords(records) && store.saveTracking(tracking);
+    const ok = store.saveRecords(records) && store.saveTracking(tracking) && store.saveEnrollment(enrollment);
     setSaveError(!ok);
-  }, [records, tracking]);
+  }, [records, tracking, enrollment]);
   useEffect(() => void (meta && store.saveMeta(meta)), [meta]);
   useEffect(() => void (mapping && store.saveMapping(mapping)), [mapping]);
 
@@ -80,6 +93,7 @@ export default function App() {
   function handleRestore(b: BackupData) {
     setRecords(b.records);
     setTracking(b.tracking);
+    if (b.enrollment) setEnrollment(b.enrollment);
     if (b.mapping) setMapping(b.mapping);
     setMeta({ source: 'backup', importedAt: new Date().toISOString() });
     setFilters(emptyFilters());
@@ -89,6 +103,7 @@ export default function App() {
     const s = sampleRecords();
     setRecords(s);
     setTracking((t) => ({ ...sampleTracking(s), ...t }));
+    setEnrollment(sampleEnrollment());
     setMeta({ source: 'sample' });
     setFilters(emptyFilters());
   }
@@ -101,6 +116,7 @@ export default function App() {
   function clearAll() {
     setRecords([]);
     setTracking({});
+    setEnrollment({});
     setMeta({ source: 'empty' });
     setFilters(emptyFilters());
   }
@@ -153,13 +169,14 @@ export default function App() {
           )}
           {saveError && <Alert tone="red">บันทึกลงเบราว์เซอร์ไม่สำเร็จ (พื้นที่อาจเต็มหรือถูกปิดกั้น) — กรุณาส่งออกไฟล์สำรองข้อมูล</Alert>}
 
-          {page === 'dashboard' && <Dashboard rows={rows} goTracking={goTracking} />}
+          {page === 'dashboard' && <Dashboard rows={rows} enrollment={enrollment} goTracking={goTracking} goEnrollment={() => go('enrollment')} />}
           {page === 'classrooms' && <Classrooms rows={rows} classroom={classroom} setClassroom={setClassroom} onUpdate={updateTracking} />}
           {page === 'tracking' && <TrackingPage rows={rows} filters={filters} setFilters={setFilters} onUpdate={updateTracking} />}
-          {page === 'teachers' && <Teachers rows={rows} onSelectTeacher={(t) => goTracking({ teacher: t })} />}
-          {page === 'import' && <Import existingCount={records.length} isSample={meta?.source === 'sample'} tracking={tracking} savedMapping={mapping} onImport={handleImport} />}
+          {page === 'teachers' && <Teachers rows={rows} goTracking={goTracking} />}
+          {page === 'enrollment' && <Enrollment rows={rows} enrollment={enrollment} setEnrollment={setEnrollment} />}
+          {page === 'import' && <Import existingCount={records.length} isSample={meta?.source === 'sample'} tracking={tracking} enrollment={enrollment} savedMapping={mapping} onImport={handleImport} />}
           {page === 'backup' && (
-            <Backup records={records} tracking={tracking} mapping={mapping} meta={meta} onRestore={handleRestore} onLoadSample={loadSample} onPruneOrphans={pruneOrphans} onClearAll={clearAll} />
+            <Backup records={records} tracking={tracking} mapping={mapping} enrollment={enrollment} meta={meta} onRestore={handleRestore} onLoadSample={loadSample} onPruneOrphans={pruneOrphans} onClearAll={clearAll} />
           )}
         </div>
       </main>

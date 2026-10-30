@@ -1,6 +1,6 @@
 // ข้อมูลจำลองสำหรับทดลองระบบเท่านั้น — ชื่อทั้งหมดสมมติขึ้น ไม่ใช่ข้อมูลนักเรียน/ครูจริง
 import { recordKey } from './normalize';
-import type { GradeRecord, GradeResult, TrackingMap } from './types';
+import type { EnrollmentMap, GradeRecord, GradeResult, TrackingMap } from './types';
 
 type S = [studentId: string, name: string, classroom: string, code: string, subject: string, teacher: string, result: GradeResult];
 
@@ -62,4 +62,19 @@ export function sampleTracking(records: GradeRecord[]): TrackingMap {
   set(10, 'pending', -1, 'ติดต่อผู้ปกครองแล้ว');
   set(13, 'in_progress', 14, '');
   return t;
+}
+
+/** จำนวนนักเรียนทั้งหมดต่อห้อง (สมมติ) — รวมห้องที่ไม่มีนักเรียนติด เพื่อให้ร้อยละคำนวณได้ครบ */
+const SAMPLE_ENROLLMENT: Record<string, number> = {
+  'ม.1/1': 38, 'ม.1/2': 37, 'ม.1/3': 36,
+  'ม.2/1': 40, 'ม.2/2': 39,
+  'ม.3/1': 35, 'ม.3/2': 36,
+  'ม.4/1': 32, 'ม.4/2': 30,
+  'ม.5/1': 31, 'ม.5/2': 29, 'ม.5/3': 28,
+  'ม.6/1': 30, 'ม.6/2': 27,
+};
+
+export function sampleEnrollment(): EnrollmentMap {
+  const now = new Date().toISOString();
+  return Object.fromEntries(Object.entries(SAMPLE_ENROLLMENT).map(([room, total]) => [room, { total, source: 'sample' as const, updatedAt: now }]));
 }

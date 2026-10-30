@@ -1,14 +1,16 @@
 import * as XLSX from 'xlsx';
 import type { ColumnMapping } from './importMapping';
 import { cellText, formatThaiDate } from './normalize';
-import { sanitizeRecords, sanitizeTracking } from './storage';
-import { statusLabel, type GradeRecord, type Row, type TrackingMap } from './types';
+import { sanitizeEnrollment, sanitizeRecords, sanitizeTracking } from './storage';
+import { statusLabel, type EnrollmentMap, type GradeRecord, type Row, type TrackingMap } from './types';
 
 const MAX_FILE_BYTES = 20 * 1024 * 1024;
 
 export async function readWorkbook(file: File): Promise<XLSX.WorkBook> {
-  if (!/\.(xlsx|xls)$/i.test(file.name)) throw new Error('รองรับเฉพาะไฟล์ .xlsx และ .xls');
+  if (!/\.(xlsx|xls|csv)$/i.test(file.name)) throw new Error('รองรับเฉพาะไฟล์ .xlsx .xls และ .csv');
   if (file.size > MAX_FILE_BYTES) throw new Error('ไฟล์มีขนาดใหญ่เกิน 20 MB');
+  // CSV (เช่น ที่แปลงจาก PDF) อ่านเป็นข้อความ UTF-8 เพื่อให้ภาษาไทยไม่เพี้ยน
+  if (/\.csv$/i.test(file.name)) return XLSX.read((await file.text()).replace(/^\uFEFF/, ''), { type: 'string', raw: true });
   const buf = await file.arrayBuffer();
   return XLSX.read(buf, { type: 'array', cellDates: true });
 }
@@ -50,7 +52,7 @@ function download(data: BlobPart, fileName: string, type: string) {
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
-const stamp = () => new Date().toISOString().slice(0, 16).replace(/\D/g, '');
+export const stamp = () => new Date().toISOString().slice(0, 16).replace(/\D/g, '');
 
 /** ส่งออกรายการที่กรองอยู่เป็น Excel */
 export function exportRowsToExcel(rows: Row[], fileName = `gradetrack-report-${stamp()}.xlsx`) {
@@ -84,10 +86,11 @@ export interface Backup {
   records: GradeRecord[];
   tracking: TrackingMap;
   mapping?: ColumnMapping;
+  enrollment?: EnrollmentMap;
 }
 
-export function exportBackup(records: GradeRecord[], tracking: TrackingMap, mapping?: ColumnMapping) {
-  const backup: Backup = { app: 'gradetrack', version: 1, exportedAt: new Date().toISOString(), records, tracking, mapping };
+export function exportBackup(records: GradeRecord[], tracking: TrackingMap, mapping: ColumnMapping | undefined, enrollment: EnrollmentMap) {
+  const backup: Backup = { app: 'gradetrack', version: 1, exportedAt: new Date().toISOString(), records, tracking, mapping, enrollment };
   download(JSON.stringify(backup, null, 2), `gradetrack-backup-${stamp()}.json`, 'application/json');
 }
 
@@ -109,5 +112,6 @@ export async function readBackup(file: File): Promise<Backup> {
     records: sanitizeRecords(o.records),
     tracking: sanitizeTracking(o.tracking),
     mapping,
+    enrollment: o.enrollment === undefined ? undefined : sanitizeEnrollment(o.enrollment),
   };
 }

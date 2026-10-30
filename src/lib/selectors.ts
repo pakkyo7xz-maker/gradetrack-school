@@ -1,4 +1,4 @@
-import { compareClassroom, compact, todayIso } from './normalize';
+import { compareClassroom, compact, levelOf, todayIso } from './normalize';
 import { emptyTracking, type Filters, type GradeRecord, type Row, type TrackingMap } from './types';
 
 export function buildRows(records: GradeRecord[], tracking: TrackingMap): Row[] {
@@ -20,6 +20,7 @@ export function applyFilters(rows: Row[], f: Filters): Row[] {
   const q = compact(f.search);
   return rows.filter(
     (r) =>
+      (!f.level || levelOf(r.classroom) === f.level) &&
       (!f.classroom || r.classroom === f.classroom) &&
       (!f.teacher || teacherOf(r) === f.teacher) &&
       (!f.result || r.result === f.result) &&

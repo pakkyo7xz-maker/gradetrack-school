@@ -4,7 +4,8 @@ import { Alert, ConfirmDialog, PageHeader, ResultBadge } from '../components/ui'
 import { readWorkbook, rowsFromMatrix, sheetMatrix } from '../lib/excel';
 import { FIELDS, autoDetectMapping, detectHeaderRow, missingFields, optionalWarnings, parseRows, type ColumnMapping, type FieldKey } from '../lib/importMapping';
 import { cellText } from '../lib/normalize';
-import type { GradeRecord, TrackingMap } from '../lib/types';
+import type { EnrollmentMap, GradeRecord, TrackingMap } from '../lib/types';
+import { validateRecords } from '../lib/validation';
 
 export type ImportMode = 'replace' | 'merge';
 
@@ -12,11 +13,12 @@ interface Props {
   existingCount: number;
   isSample: boolean;
   tracking: TrackingMap;
+  enrollment: EnrollmentMap;
   savedMapping?: ColumnMapping;
   onImport: (records: GradeRecord[], mode: ImportMode, fileName: string, mapping: ColumnMapping) => void;
 }
 
-export default function Import({ existingCount, isSample, tracking, savedMapping, onImport }: Props) {
+export default function Import({ existingCount, isSample, tracking, enrollment, savedMapping, onImport }: Props) {
   const [wb, setWb] = useState<WorkBook | null>(null);
   const [fileName, setFileName] = useState('');
   const [sheet, setSheet] = useState('');
@@ -34,6 +36,9 @@ export default function Import({ existingCount, isSample, tracking, savedMapping
   const missing = missingFields(mapping);
   const warnings = optionalWarnings(mapping);
   const withTracking = parsed ? parsed.records.filter((r) => tracking[r.key]).length : 0;
+  const issues = useMemo(() => (parsed && missing.length === 0 ? validateRecords(parsed.records, enrollment) : []), [parsed, missing.length, enrollment]);
+  const hasErrors = issues.some((i) => i.level === 'error');
+  const [ackErrors, setAckErrors] = useState(false);
 
   function selectSheet(name: string, book = wb) {
     if (!book) return;
@@ -53,6 +58,7 @@ export default function Import({ existingCount, isSample, tracking, savedMapping
     if (!file) return;
     setError('');
     setDone('');
+    setAckErrors(false);
     setLoading(true);
     try {
       const book = await readWorkbook(file);
@@ -77,11 +83,11 @@ export default function Import({ existingCount, isSample, tracking, savedMapping
     setSheet('');
   }
 
-  const canImport = !!parsed && missing.length === 0 && parsed.records.length > 0;
+  const canImport = !!parsed && missing.length === 0 && parsed.records.length > 0 && (!hasErrors || ackErrors);
 
   return (
     <div>
-      <PageHeader title="นำเข้า Excel" subtitle="รองรับ .xlsx / .xls — ระบบจะจับคู่หัวคอลัมน์ให้อัตโนมัติ และปรับเองได้" />
+      <PageHeader title="นำเข้า Excel" subtitle="รองรับ .xlsx / .xls / .csv (รวมไฟล์ที่แปลงจาก PDF) — จับคู่หัวคอลัมน์อัตโนมัติ ปรับเองได้ และตรวจสอบก่อนนำเข้า" />
 
       <div className="space-y-4">
         {done && <Alert tone="emerald">{done}</Alert>}
@@ -94,7 +100,7 @@ export default function Import({ existingCount, isSample, tracking, savedMapping
             <span className="text-3xl">📄</span>
             <span className="mt-2 text-sm font-medium text-slate-700">{loading ? 'กำลังอ่านไฟล์…' : fileName && wb ? fileName : 'คลิกเพื่อเลือกไฟล์ Excel'}</span>
             <span className="text-xs text-slate-400">ไฟล์จะถูกอ่านในเบราว์เซอร์เท่านั้น ไม่มีการอัปโหลดออกนอกเครื่อง</span>
-            <input type="file" accept=".xlsx,.xls" className="hidden" onChange={(e) => { onFile(e.target.files?.[0]); e.target.value = ''; }} />
+            <input type="file" accept=".xlsx,.xls,.csv" className="hidden" onChange={(e) => { onFile(e.target.files?.[0]); e.target.value = ''; }} />
           </label>
         </div>
 
@@ -199,6 +205,26 @@ export default function Import({ existingCount, isSample, tracking, savedMapping
                         ))}
                       </tbody>
                     </table>
+                  </div>
+                )}
+
+                {issues.length > 0 && (
+                  <div className="mt-4 space-y-2">
+                    <div className="text-sm font-semibold">ผลการตรวจสอบความถูกต้อง</div>
+                    {issues.map((i) => (
+                      <Alert key={i.title} tone={i.level === 'error' ? 'red' : i.level === 'warning' ? 'amber' : 'blue'}>
+                        <details>
+                          <summary className="cursor-pointer font-medium">{i.level === 'error' ? '✖ ' : i.level === 'warning' ? '⚠ ' : 'ℹ '}{i.title}</summary>
+                          <ul className="mt-1 max-h-40 list-disc overflow-auto pl-5 text-xs">{i.details.map((d) => <li key={d}>{d}</li>)}</ul>
+                        </details>
+                      </Alert>
+                    ))}
+                    {hasErrors && (
+                      <label className="flex items-center gap-2 text-sm text-rose-700">
+                        <input type="checkbox" className="accent-rose-600" checked={ackErrors} onChange={(e) => setAckErrors(e.target.checked)} />
+                        ตรวจสอบแล้ว ยืนยันนำเข้าแม้มีข้อผิดพลาด (แนะนำให้แก้ไฟล์ต้นทางก่อน)
+                      </label>
+                    )}
                   </div>
                 )}
 

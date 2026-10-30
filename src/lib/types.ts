@@ -1,0 +1,57 @@
+// ===== Data Model =====
+// แยกจาก Import Mapping (ดู importMapping.ts) เพื่อให้ปรับตามไฟล์ Excel จริงได้โดยไม่กระทบส่วนอื่น
+
+export type GradeResult = '0' | 'ร' | 'มส';
+export const GRADE_RESULTS: GradeResult[] = ['0', 'ร', 'มส'];
+
+export type TrackingStatus = 'pending' | 'in_progress' | 'review' | 'done';
+export const STATUSES: { value: TrackingStatus; label: string }[] = [
+  { value: 'pending', label: 'ยังไม่ดำเนินการ' },
+  { value: 'in_progress', label: 'กำลังแก้ไข' },
+  { value: 'review', label: 'รอตรวจสอบ' },
+  { value: 'done', label: 'แก้ไขสำเร็จ' },
+];
+export const statusLabel = (s: TrackingStatus) => STATUSES.find((x) => x.value === s)?.label ?? s;
+
+/** ข้อมูลผลการเรียน 1 รายการ (นักเรียน 1 คน × 1 วิชา) ที่มาจากไฟล์ Excel */
+export interface GradeRecord {
+  /** คีย์คงที่ ใช้ผูกกับสถานะการติดตาม (สร้างจากนักเรียน + วิชา) */
+  key: string;
+  studentId: string;
+  studentName: string;
+  /** รูปแบบมาตรฐาน เช่น "ม.1/1" */
+  classroom: string;
+  subjectCode: string;
+  subjectName: string;
+  teacher: string;
+  homeroomTeacher: string;
+  result: GradeResult;
+  term: string;
+}
+
+/** สถานะการติดตาม เก็บแยกจากข้อมูลนำเข้า เพื่อไม่ให้หายเมื่อนำเข้าไฟล์ใหม่ */
+export interface Tracking {
+  status: TrackingStatus;
+  dueDate: string; // YYYY-MM-DD
+  note: string;
+  updatedAt: string;
+}
+
+export type TrackingMap = Record<string, Tracking>;
+
+export const emptyTracking = (): Tracking => ({ status: 'pending', dueDate: '', note: '', updatedAt: '' });
+
+export interface Row extends GradeRecord {
+  tracking: Tracking;
+  overdue: boolean;
+}
+
+export interface Filters {
+  classroom: string;
+  teacher: string;
+  result: '' | GradeResult;
+  status: '' | TrackingStatus | 'overdue';
+  search: string;
+}
+
+export const emptyFilters = (): Filters => ({ classroom: '', teacher: '', result: '', status: '', search: '' });

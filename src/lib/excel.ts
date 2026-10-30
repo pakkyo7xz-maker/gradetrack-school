@@ -1,0 +1,113 @@
+import * as XLSX from 'xlsx';
+import type { ColumnMapping } from './importMapping';
+import { cellText, formatThaiDate } from './normalize';
+import { sanitizeRecords, sanitizeTracking } from './storage';
+import { statusLabel, type GradeRecord, type Row, type TrackingMap } from './types';
+
+const MAX_FILE_BYTES = 20 * 1024 * 1024;
+
+export async function readWorkbook(file: File): Promise<XLSX.WorkBook> {
+  if (!/\.(xlsx|xls)$/i.test(file.name)) throw new Error('รองรับเฉพาะไฟล์ .xlsx และ .xls');
+  if (file.size > MAX_FILE_BYTES) throw new Error('ไฟล์มีขนาดใหญ่เกิน 20 MB');
+  const buf = await file.arrayBuffer();
+  return XLSX.read(buf, { type: 'array', cellDates: true });
+}
+
+export function sheetMatrix(wb: XLSX.WorkBook, sheetName: string): unknown[][] {
+  const ws = wb.Sheets[sheetName];
+  if (!ws) return [];
+  return XLSX.utils.sheet_to_json<unknown[]>(ws, { header: 1, defval: '', blankrows: false });
+}
+
+/** แปลง matrix เป็น object ตามหัวคอลัมน์ในแถว headerRow (หัวซ้ำจะเติม _2, _3) */
+export function rowsFromMatrix(matrix: unknown[][], headerRow: number): { headers: string[]; rows: Record<string, unknown>[] } {
+  const rawHeaders = matrix[headerRow] ?? [];
+  const width = Math.max(rawHeaders.length, ...matrix.slice(headerRow + 1).map((r) => r.length), 0);
+  const counts: Record<string, number> = {};
+  const headers: string[] = [];
+  for (let i = 0; i < width; i++) {
+    let h = cellText(rawHeaders[i]) || `คอลัมน์ ${i + 1}`;
+    counts[h] = (counts[h] ?? 0) + 1;
+    if (counts[h] > 1) h = `${h}_${counts[h]}`;
+    headers.push(h);
+  }
+  const rows = matrix.slice(headerRow + 1).map((r) => {
+    const o: Record<string, unknown> = {};
+    headers.forEach((h, i) => (o[h] = r[i] ?? ''));
+    return o;
+  });
+  return { headers, rows };
+}
+
+function download(data: BlobPart, fileName: string, type: string) {
+  const url = URL.createObjectURL(new Blob([data], { type }));
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = fileName;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+const stamp = () => new Date().toISOString().slice(0, 16).replace(/\D/g, '');
+
+/** ส่งออกรายการที่กรองอยู่เป็น Excel */
+export function exportRowsToExcel(rows: Row[], fileName = `gradetrack-report-${stamp()}.xlsx`) {
+  const data = rows.map((r, i) => ({
+    ลำดับ: i + 1,
+    รหัสนักเรียน: r.studentId,
+    'ชื่อ-นามสกุล': r.studentName,
+    'ชั้น/ห้อง': r.classroom,
+    รหัสวิชา: r.subjectCode,
+    ชื่อรายวิชา: r.subjectName,
+    ครูผู้สอน: r.teacher,
+    ครูประจำชั้น: r.homeroomTeacher,
+    ผลการเรียน: r.result,
+    สถานะ: statusLabel(r.tracking.status),
+    กำหนดแก้ไข: formatThaiDate(r.tracking.dueDate),
+    เกินกำหนด: r.overdue ? 'เกินกำหนด' : '',
+    หมายเหตุ: r.tracking.note,
+  }));
+  const ws = XLSX.utils.json_to_sheet(data);
+  ws['!cols'] = [6, 12, 26, 9, 10, 24, 22, 22, 10, 16, 12, 10, 30].map((wch) => ({ wch }));
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'รายงาน');
+  XLSX.writeFile(wb, fileName);
+}
+
+// ===== สำรองข้อมูล (JSON) =====
+export interface Backup {
+  app: 'gradetrack';
+  version: 1;
+  exportedAt: string;
+  records: GradeRecord[];
+  tracking: TrackingMap;
+  mapping?: ColumnMapping;
+}
+
+export function exportBackup(records: GradeRecord[], tracking: TrackingMap, mapping?: ColumnMapping) {
+  const backup: Backup = { app: 'gradetrack', version: 1, exportedAt: new Date().toISOString(), records, tracking, mapping };
+  download(JSON.stringify(backup, null, 2), `gradetrack-backup-${stamp()}.json`, 'application/json');
+}
+
+export async function readBackup(file: File): Promise<Backup> {
+  if (file.size > MAX_FILE_BYTES) throw new Error('ไฟล์มีขนาดใหญ่เกินไป');
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(await file.text());
+  } catch {
+    throw new Error('ไฟล์ไม่ใช่ JSON ที่ถูกต้อง');
+  }
+  const o = parsed as Partial<Backup> | null;
+  if (!o || typeof o !== 'object' || o.app !== 'gradetrack') throw new Error('ไม่ใช่ไฟล์สำรองข้อมูลของ GradeTrack');
+  const mapping = o.mapping && typeof o.mapping === 'object' && !Array.isArray(o.mapping) ? o.mapping : undefined;
+  return {
+    app: 'gradetrack',
+    version: 1,
+    exportedAt: cellText(o.exportedAt),
+    records: sanitizeRecords(o.records),
+    tracking: sanitizeTracking(o.tracking),
+    mapping,
+  };
+}

@@ -1,0 +1,10 @@
+node_modules
+dist
+*.local
+.DS_Store
+# ห้าม commit ไฟล์ข้อมูลนักเรียนจริง
+data/
+*.xlsx
+*.xls
+gradetrack-backup-*.json
+*.tsbuildinfo

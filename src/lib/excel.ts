@@ -1,4 +1,5 @@
 import * as XLSX from 'xlsx';
+import { saveFile, saveWorkbook } from './download';
 import type { ColumnMapping } from './importMapping';
 import { cellText, formatThaiDate } from './normalize';
 import { sanitizeEnrollment, sanitizeRecords, sanitizeTracking } from './storage';
@@ -41,17 +42,6 @@ export function rowsFromMatrix(matrix: unknown[][], headerRow: number): { header
   return { headers, rows };
 }
 
-function download(data: BlobPart, fileName: string, type: string) {
-  const url = URL.createObjectURL(new Blob([data], { type }));
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = fileName;
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
-  setTimeout(() => URL.revokeObjectURL(url), 1000);
-}
-
 export const stamp = () => new Date().toISOString().slice(0, 16).replace(/\D/g, '');
 
 /** ส่งออกรายการที่กรองอยู่เป็น Excel */
@@ -75,7 +65,7 @@ export function exportRowsToExcel(rows: Row[], fileName = `gradetrack-report-${s
   ws['!cols'] = [6, 12, 26, 9, 10, 24, 22, 22, 10, 16, 12, 10, 30].map((wch) => ({ wch }));
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, 'รายงาน');
-  XLSX.writeFile(wb, fileName);
+  return saveWorkbook(wb, fileName);
 }
 
 // ===== สำรองข้อมูล (JSON) =====
@@ -91,7 +81,7 @@ export interface Backup {
 
 export function exportBackup(records: GradeRecord[], tracking: TrackingMap, mapping: ColumnMapping | undefined, enrollment: EnrollmentMap) {
   const backup: Backup = { app: 'gradetrack', version: 1, exportedAt: new Date().toISOString(), records, tracking, mapping, enrollment };
-  download(JSON.stringify(backup, null, 2), `gradetrack-backup-${stamp()}.json`, 'application/json');
+  return saveFile(`gradetrack-backup-${stamp()}.json`, new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json' }));
 }
 
 export async function readBackup(file: File): Promise<Backup> {

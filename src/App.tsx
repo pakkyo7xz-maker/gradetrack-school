@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Alert } from './components/ui';
+import type { Notice } from './lib/download';
 import type { Backup as BackupData } from './lib/excel';
 import type { ColumnMapping } from './lib/importMapping';
 import { sampleEnrollment, sampleRecords, sampleTracking } from './lib/sampleData';
@@ -59,6 +60,18 @@ export default function App() {
   const [filters, setFilters] = useState<Filters>(emptyFilters);
   const [classroom, setClassroom] = useState('');
   const [saveError, setSaveError] = useState(false);
+  const [notice, setNotice] = useState<Notice | null>(null);
+
+  useEffect(() => {
+    let timer = 0;
+    const onNotice = (e: Event) => {
+      setNotice((e as CustomEvent<Notice>).detail);
+      clearTimeout(timer);
+      timer = window.setTimeout(() => setNotice(null), 5000);
+    };
+    window.addEventListener('gradetrack:notice', onNotice);
+    return () => window.removeEventListener('gradetrack:notice', onNotice);
+  }, []);
 
   useEffect(() => {
     const ok = store.saveRecords(records) && store.saveTracking(tracking) && store.saveEnrollment(enrollment);
@@ -163,6 +176,12 @@ export default function App() {
           ))}
         </nav>
       </header>
+
+      {notice && (
+        <div className="fixed inset-x-0 bottom-0 z-50 flex justify-center p-4" style={{ paddingBottom: 'calc(1rem + env(safe-area-inset-bottom, 0px))' }} role="status">
+          <div className="max-w-md shadow-lg"><Alert tone={notice.tone}>{notice.text}</Alert></div>
+        </div>
+      )}
 
       <main className="min-w-0 flex-1 p-4 sm:p-6 lg:p-8">
         <div className="mx-auto max-w-7xl space-y-4">

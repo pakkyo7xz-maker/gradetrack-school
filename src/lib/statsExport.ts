@@ -1,5 +1,6 @@
 // ส่งออกรายงานสถิติเป็น Excel แยกตามมุมมอง (ภาพรวม / ระดับชั้น / ห้องเรียน / ครูผู้สอน)
 import * as XLSX from 'xlsx';
+import { saveWorkbook } from './download';
 import { stamp } from './excel';
 import type { GroupStats, TeacherStats } from './stats';
 
@@ -50,7 +51,7 @@ function sheetFrom(rows: Record<string, unknown>[], withNotes = true) {
 function save(sheets: [string, XLSX.WorkSheet][], name: string) {
   const wb = XLSX.utils.book_new();
   sheets.forEach(([n, ws]) => XLSX.utils.book_append_sheet(wb, ws, n));
-  XLSX.writeFile(wb, `gradetrack-${name}-${stamp()}.xlsx`);
+  return saveWorkbook(wb, `gradetrack-${name}-${stamp()}.xlsx`);
 }
 
 const overviewSheet = (school: GroupStats) => sheetFrom([groupRow(school, 'กลุ่ม')]);

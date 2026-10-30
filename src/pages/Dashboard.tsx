@@ -185,7 +185,7 @@ function Overview({ school, levelGroups, onDrill, goTracking }: { school: GroupS
         </div>
       </section>
 
-      <div className="grid gap-4 lg:grid-cols-2">
+      <div className="grid gap-4 lg:grid-cols-2 [&>*]:min-w-0">
         <GroupedBarChart title="0 ร มส รายระดับชั้น" groups={levelGroups} onBarClick={(g, t) => onDrill({ group: g, result: t, view: 'students' })} />
         <div className="card overflow-hidden">
           <div className="border-b border-slate-100 px-4 py-3 text-sm font-semibold">รายการเกินกำหนด</div>

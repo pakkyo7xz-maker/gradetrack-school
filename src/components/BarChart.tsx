@@ -29,7 +29,7 @@ export default function GroupedBarChart({ groups, title, onBarClick }: { groups:
   const H = 180;
 
   return (
-    <div className="card p-4">
+    <div className="card min-w-0 p-4">
       <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
         <div className="text-sm font-semibold">{title}</div>
         <div className="inline-flex rounded-lg bg-slate-100 p-0.5 text-xs">

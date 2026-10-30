@@ -9,3 +9,4 @@ data/
 *.csv
 gradetrack-backup-*.json
 *.tsbuildinfo
+dist-artifact

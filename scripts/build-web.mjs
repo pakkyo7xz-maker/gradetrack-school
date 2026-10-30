@@ -14,7 +14,10 @@ const files = readdirSync(dir);
 const js = files.filter((f) => f.endsWith('.js')).map((f) => readFileSync(join(dir, f), 'utf8')).join('\n');
 const css = files.filter((f) => f.endsWith('.css')).map((f) => readFileSync(join(dir, f), 'utf8')).join('\n');
 // กันไม่ให้ข้อความ "</script" ในโค้ดไปปิดแท็ก script ก่อนเวลา
-const safeJs = js.replace(/<\/(script)/gi, '<\\/$1');
+const safeJs = js
+  .replace(/<\/(script)/gi, '<\\/$1')
+  // U+FFFD ในโค้ดไลบรารี (pdfmake) เขียนเป็น escape แทน: ความหมายเหมือนเดิม แต่ไม่ถูกมองว่าเป็นอักขระเสีย
+  .replace(/\uFFFD/g, '\\uFFFD');
 const safeCss = css.replace(/<\/(style)/gi, '<\\/$1');
 
 // เนื้อหาหน้า (แพลตฟอร์มจะครอบ doctype/head/body ให้เอง)

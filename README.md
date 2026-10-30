@@ -24,6 +24,16 @@ npm run build:web      # สร้าง dist-artifact/gradetrack.html (HTML ไ
 ไฟล์นี้เผยแพร่เป็นหน้าเว็บบน claude.ai (Artifact) ได้ การส่งออก Excel/ไฟล์สำรองบนเว็บจะผ่านหน้าต่างยืนยันการบันทึกของแพลตฟอร์ม
 ข้อมูลนักเรียนยังเก็บใน localStorage ของเบราว์เซอร์ผู้เปิดเท่านั้น (แต่ละคน/แต่ละเครื่องแยกกัน) — ควรส่งออกไฟล์สำรองเป็นประจำ
 
+### เผยแพร่เป็นเว็บของตัวเอง (GitHub Pages)
+
+`.github/workflows/deploy-pages.yml` สร้างและเผยแพร่เว็บให้อัตโนมัติทุกครั้งที่ push — ต้องตั้งค่าครั้งเดียว:
+1. Settings → General → Danger Zone → Change visibility → **Public** (GitHub Pages ของ repo ส่วนตัวต้องใช้แพ็กเกจเสียเงิน)
+2. Settings → Pages → Build and deployment → Source: **GitHub Actions**
+3. Actions → Deploy web app → Run workflow
+
+เว็บจะอยู่ที่ `https://<ชื่อผู้ใช้>.github.io/gradetrack-school/` — หรือใช้ `npm run build:web -- site/index.html --standalone`
+แล้วนำไฟล์ `index.html` ไปวางบนเว็บโฮสต์ใดก็ได้ / เปิดตรงจากเครื่องได้เลย
+
 ครั้งแรกระบบจะแสดง **ข้อมูลตัวอย่าง (สมมติ) 18 รายการ** — ไปที่เมนู "นำเข้า Excel" เพื่อใช้ข้อมูลจริง
 
 ## หน้าต่างๆ

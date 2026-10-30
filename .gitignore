@@ -10,3 +10,4 @@ data/
 gradetrack-backup-*.json
 *.tsbuildinfo
 dist-artifact
+site

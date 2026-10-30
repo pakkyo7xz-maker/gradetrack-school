@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { formatThaiDate } from '../lib/normalize';
 import { STATUSES, type Row, type Tracking, type TrackingStatus } from '../lib/types';
 import { Empty, OverdueBadge, ResultBadge, STATUS_STYLE } from './ui';
@@ -34,14 +34,47 @@ function DueInput({ row, onUpdate }: { row: Row; onUpdate: UpdateTracking }) {
   );
 }
 
+// หมายเหตุที่พิมพ์ค้างอยู่ (ยังไม่ครบเวลาหน่วง) — บันทึกทั้งหมดก่อนปิด/รีเฟรชหน้า
+const pendingNotes = new Set<() => void>();
+if (typeof window !== 'undefined') window.addEventListener('pagehide', () => pendingNotes.forEach((f) => f()));
+
+/** หมายเหตุ: บันทึกอัตโนมัติขณะพิมพ์ (หน่วง 0.5 วินาที) และทันทีเมื่อออกจากช่อง ปิดหน้าต่าง หรือรีเฟรช */
 function NoteInput({ row, onUpdate }: { row: Row; onUpdate: UpdateTracking }) {
+  const [value, setValue] = useState(row.tracking.note);
+  const pending = useRef<string | null>(null);
+  const timer = useRef(0);
+  const latest = useRef({ row, onUpdate });
+  latest.current = { row, onUpdate };
+  const flush = useRef(() => {
+    window.clearTimeout(timer.current);
+    const v = pending.current;
+    pending.current = null;
+    pendingNotes.delete(flush.current);
+    const { row: r, onUpdate: update } = latest.current;
+    if (v !== null && v !== r.tracking.note) update(r.key, { note: v });
+  });
+
+  // รับค่าที่เปลี่ยนจากภายนอก (เช่น กู้คืนไฟล์สำรอง) เมื่อไม่ได้พิมพ์ค้างอยู่
+  useEffect(() => {
+    if (pending.current === null) setValue(row.tracking.note);
+  }, [row.tracking.note]);
+  useEffect(() => {
+    const f = flush.current;
+    return () => f();
+  }, []);
+
   return (
     <input
-      // key ทำให้ค่าเริ่มต้นอัปเดตเมื่อข้อมูลเปลี่ยนจากภายนอก (เช่น นำเข้าไฟล์สำรอง)
-      key={row.tracking.note}
-      defaultValue={row.tracking.note}
+      value={value}
       placeholder="เพิ่มหมายเหตุ…"
-      onBlur={(e) => e.target.value !== row.tracking.note && onUpdate(row.key, { note: e.target.value })}
+      onChange={(e) => {
+        setValue(e.target.value);
+        pending.current = e.target.value;
+        pendingNotes.add(flush.current);
+        window.clearTimeout(timer.current);
+        timer.current = window.setTimeout(flush.current, 500);
+      }}
+      onBlur={() => flush.current()}
       onKeyDown={(e) => e.key === 'Enter' && (e.target as HTMLInputElement).blur()}
       className="input min-w-[12rem] px-2 py-1.5 text-xs"
     />

@@ -1,7 +1,7 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Alert } from './components/ui';
 import type { Notice } from './lib/download';
-import type { Backup as BackupData } from './lib/excel';
+import { exportBackup, type Backup as BackupData } from './lib/excel';
 import type { ColumnMapping } from './lib/importMapping';
 import { sampleEnrollment, sampleRecords, sampleTracking } from './lib/sampleData';
 import { buildRows } from './lib/selectors';
@@ -75,17 +75,39 @@ export default function App() {
     return () => window.removeEventListener('gradetrack:notice', onNotice);
   }, []);
 
+  const [savedAt, setSavedAt] = useState<Date | null>(null);
+  const [lastBackup, setLastBackup] = useState<string | null>(store.loadLastBackup);
+  const [persistent, setPersistent] = useState(false);
+  const trackingRef = useRef(tracking);
+  trackingRef.current = tracking;
+
+  useEffect(() => {
+    store.requestPersistentStorage().then(setPersistent);
+    const onBackup = () => setLastBackup(store.loadLastBackup());
+    window.addEventListener('gradetrack:backup', onBackup);
+    return () => window.removeEventListener('gradetrack:backup', onBackup);
+  }, []);
+
   useEffect(() => {
     const ok = store.saveRecords(records) && store.saveTracking(tracking) && store.saveEnrollment(enrollment);
     setSaveError(!ok);
+    if (ok) setSavedAt(new Date());
   }, [records, tracking, enrollment]);
   useEffect(() => void (meta && store.saveMeta(meta)), [meta]);
   useEffect(() => void (mapping && store.saveMapping(mapping)), [mapping]);
 
   const rows = useMemo(() => buildRows(records, tracking), [records, tracking]);
 
-  const updateTracking = (key: string, patch: Partial<Tracking>) =>
-    setTracking((t) => ({ ...t, [key]: { ...(t[key] ?? emptyTracking()), ...patch, updatedAt: new Date().toISOString() } }));
+  // เขียนลงเบราว์เซอร์ทันทีทุกครั้งที่แก้ (ไม่รอรอบแสดงผล) เพื่อไม่ให้ข้อมูลหายแม้ปิดหน้าทันที
+  const updateTracking = (key: string, patch: Partial<Tracking>) => {
+    const t = trackingRef.current;
+    const next = { ...t, [key]: { ...(t[key] ?? emptyTracking()), ...patch, updatedAt: new Date().toISOString() } };
+    trackingRef.current = next;
+    setSaveError(!store.saveTracking(next));
+    setTracking(next);
+  };
+  const backupNow = () => exportBackup(records, tracking, mapping, enrollment);
+  const status = <SaveStatus savedAt={savedAt} lastBackup={lastBackup} persistent={persistent} error={saveError} onBackup={backupNow} />;
 
   const go = (p: Page) => {
     setPage(p);
@@ -163,13 +185,13 @@ export default function App() {
               </button>
             ))}
           </nav>
-          <div className="mt-auto text-xs text-slate-400">ข้อมูลเก็บในเบราว์เซอร์นี้เท่านั้น</div>
+          <div className="mt-auto">{status}</div>
         </div>
       </aside>
 
       {/* Top bar (โทรศัพท์/แท็บเล็ต) */}
       <header className="sticky top-0 z-30 border-b border-slate-200 bg-white/95 backdrop-blur lg:hidden">
-        <div className="px-4 pt-3"><Brand /></div>
+        <div className="flex items-center justify-between gap-2 px-4 pt-3"><Brand /><div className="max-w-[55%]">{status}</div></div>
         <nav className="flex gap-1 overflow-x-auto px-3 py-2">
           {NAV.map((n) => (
             <button
@@ -222,6 +244,28 @@ function Brand() {
         <div className="font-bold leading-tight text-slate-900">GradeTrack</div>
         <div className="text-[11px] leading-tight text-slate-500">ติดตามนักเรียนติด 0 ร มส</div>
       </div>
+    </div>
+  );
+}
+
+function SaveStatus({ savedAt, lastBackup, persistent, error, onBackup }: { savedAt: Date | null; lastBackup: string | null; persistent: boolean; error: boolean; onBackup: () => void }) {
+  const time = (d: Date) => d.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' });
+  const backupDate = lastBackup ? new Date(lastBackup) : null;
+  const stale = !backupDate || Date.now() - backupDate.getTime() > 7 * 24 * 3600 * 1000;
+  return (
+    <div className="space-y-1.5 text-xs">
+      <div className={`flex items-center gap-1.5 ${error ? 'text-rose-600' : 'text-emerald-700'}`}>
+        <span className={`h-2 w-2 shrink-0 rounded-full ${error ? 'bg-rose-500' : 'bg-emerald-500'}`} />
+        {error ? 'บันทึกไม่สำเร็จ' : savedAt ? `บันทึกอัตโนมัติ ${time(savedAt)}` : 'บันทึกอัตโนมัติ'}
+      </div>
+      <div className="hidden text-slate-400 lg:block">
+        เก็บในเบราว์เซอร์นี้{persistent ? ' (แบบถาวร)' : ''}
+        <br />
+        สำรองล่าสุด: {backupDate ? backupDate.toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: '2-digit' }) : 'ยังไม่เคย'}
+      </div>
+      <button className={`hidden w-full rounded-lg px-2 py-1.5 font-medium lg:block ${stale ? 'bg-amber-100 text-amber-800 hover:bg-amber-200' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`} onClick={onBackup}>
+        ⬇ สำรองข้อมูลตอนนี้
+      </button>
     </div>
   );
 }

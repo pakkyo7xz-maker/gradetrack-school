@@ -8,6 +8,7 @@ const KEYS = {
   mapping: 'gradetrack.mapping.v1',
   meta: 'gradetrack.meta.v1',
   enrollment: 'gradetrack.enrollment.v1',
+  lastBackup: 'gradetrack.lastBackup.v1',
 };
 
 export interface Meta {
@@ -103,3 +104,17 @@ export const loadEnrollment = () => {
   return v === null ? null : sanitizeEnrollment(v);
 };
 export const saveEnrollment = (e: EnrollmentMap) => write(KEYS.enrollment, e);
+
+/** เวลาที่ส่งออกไฟล์สำรองล่าสุด (ISO) */
+export const loadLastBackup = () => read<string>(KEYS.lastBackup);
+export const saveLastBackup = (iso: string) => write(KEYS.lastBackup, iso);
+
+/** ขอให้เบราว์เซอร์เก็บข้อมูลถาวร ไม่ลบอัตโนมัติเมื่อพื้นที่เครื่องเหลือน้อย */
+export async function requestPersistentStorage(): Promise<boolean> {
+  try {
+    if (!navigator.storage?.persist) return false;
+    return (await navigator.storage.persisted()) || (await navigator.storage.persist());
+  } catch {
+    return false;
+  }
+}

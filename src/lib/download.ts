@@ -27,27 +27,30 @@ function browserDownload(data: Blob, filename: string) {
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
-export async function saveFile(filename: string, data: Blob) {
+/** คืน true เมื่อส่งไฟล์ให้ผู้ใช้แล้ว (ผู้ใช้ไม่ยกเลิก) */
+export async function saveFile(filename: string, data: Blob): Promise<boolean> {
   const host = (window as unknown as { claude?: ClaudeHost }).claude;
   if (!host?.use) {
     browserDownload(data, filename);
-    return;
+    return true;
   }
   const downloads = await host.use('downloads');
   if (!downloads) {
     notify({ tone: 'red', text: 'หน้านี้ดาวน์โหลดไฟล์ไม่ได้ ลองเปิดผ่าน claude.ai โดยตรง' });
-    return;
+    return false;
   }
   try {
     const res = await downloads.save({ filename, data });
     if (res.status === 'saved') notify({ tone: 'emerald', text: `บันทึกไฟล์ ${filename} แล้ว` });
+    return true;
   } catch (e) {
     const code = (e as { code?: string })?.code;
-    if (code === 'declined') return;
+    if (code === 'declined') return false;
     notify({
       tone: 'red',
       text: code === 'rate_limited' ? 'มีหน้าต่างยืนยันการบันทึกเปิดอยู่ กรุณารอสักครู่แล้วลองใหม่' : `บันทึกไฟล์ไม่สำเร็จ (${code ?? 'ไม่ทราบสาเหตุ'})`,
     });
+    return false;
   }
 }
 

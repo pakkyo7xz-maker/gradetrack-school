@@ -2,7 +2,7 @@ import * as XLSX from 'xlsx';
 import { saveFile, saveWorkbook } from './download';
 import type { ColumnMapping } from './importMapping';
 import { cellText, formatThaiDate } from './normalize';
-import { sanitizeEnrollment, sanitizeRecords, sanitizeTracking } from './storage';
+import { sanitizeEnrollment, sanitizeRecords, sanitizeTracking, saveLastBackup } from './storage';
 import { statusLabel, type EnrollmentMap, type GradeRecord, type Row, type TrackingMap } from './types';
 
 const MAX_FILE_BYTES = 20 * 1024 * 1024;
@@ -80,9 +80,14 @@ export interface Backup {
   enrollment?: EnrollmentMap;
 }
 
-export function exportBackup(records: GradeRecord[], tracking: TrackingMap, mapping: ColumnMapping | undefined, enrollment: EnrollmentMap) {
+export async function exportBackup(records: GradeRecord[], tracking: TrackingMap, mapping: ColumnMapping | undefined, enrollment: EnrollmentMap) {
   const backup: Backup = { app: 'gradetrack', version: 1, exportedAt: new Date().toISOString(), records, tracking, mapping, enrollment };
-  return saveFile(`gradetrack-backup-${stamp()}.json`, new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json' }));
+  const ok = await saveFile(`gradetrack-backup-${stamp()}.json`, new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json' }));
+  if (ok) {
+    saveLastBackup(backup.exportedAt);
+    window.dispatchEvent(new Event('gradetrack:backup'));
+  }
+  return ok;
 }
 
 export async function readBackup(file: File): Promise<Backup> {

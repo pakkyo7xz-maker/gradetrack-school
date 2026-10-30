@@ -3,8 +3,23 @@ import FilterBar from '../components/FilterBar';
 import TrackingTable, { type UpdateTracking } from '../components/TrackingTable';
 import { PageHeader } from '../components/ui';
 import { exportRowsToExcel } from '../lib/excel';
+import { exportStudentListPdf } from '../lib/pdf';
 import { applyFilters, classroomsOf, computeStats, teachersOf } from '../lib/selectors';
-import type { Filters, Row } from '../lib/types';
+import { statusLabel, type Filters, type Row } from '../lib/types';
+
+/** คำอธิบายตัวกรองสำหรับหัวรายงาน PDF */
+function describe(f: Filters): string {
+  return [
+    f.level && `ระดับ ${f.level}`,
+    f.classroom && `ห้อง ${f.classroom}`,
+    f.teacher && `ครู ${f.teacher}`,
+    f.result && `ผล ${f.result}`,
+    f.status && (f.status === 'overdue' ? 'เกินกำหนด' : statusLabel(f.status)),
+    f.search && `ค้นหา "${f.search}"`,
+  ]
+    .filter(Boolean)
+    .join(' · ');
+}
 
 export default function Tracking({ rows, filters, setFilters, onUpdate }: { rows: Row[]; filters: Filters; setFilters: (f: Filters) => void; onUpdate: UpdateTracking }) {
   const classrooms = useMemo(() => classroomsOf(rows), [rows]);
@@ -18,9 +33,14 @@ export default function Tracking({ rows, filters, setFilters, onUpdate }: { rows
         title="ติดตามและรายงาน"
         subtitle="แก้ไขสถานะ วันกำหนด และหมายเหตุได้ทันที (บันทึกอัตโนมัติในเบราว์เซอร์)"
         actions={
-          <button className="btn-primary" disabled={filtered.length === 0} onClick={() => exportRowsToExcel(filtered)}>
-            ⬇ ส่งออก Excel ({filtered.length})
-          </button>
+          <>
+            <button className="btn-primary" disabled={filtered.length === 0} onClick={() => exportStudentListPdf(filtered, describe(filters))}>
+              ⬇ PDF รายชื่อ ({filtered.length})
+            </button>
+            <button className="btn-ghost" disabled={filtered.length === 0} onClick={() => exportRowsToExcel(filtered)}>
+              ⬇ Excel ({filtered.length})
+            </button>
+          </>
         }
       />
       <div className="card overflow-hidden">

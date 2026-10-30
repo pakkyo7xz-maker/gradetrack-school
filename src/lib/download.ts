@@ -3,7 +3,7 @@
 import * as XLSX from 'xlsx';
 
 export interface Notice {
-  tone: 'emerald' | 'red';
+  tone: 'emerald' | 'red' | 'blue';
   text: string;
 }
 

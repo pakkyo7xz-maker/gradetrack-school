@@ -2,10 +2,11 @@ import { useMemo, useState, type ReactNode } from 'react';
 import GroupedBarChart from '../components/BarChart';
 import StatsTable, { type DrillRequest } from '../components/StatsTable';
 import StudentListModal, { type Drill } from '../components/StudentListModal';
-import TeacherTable from '../components/TeacherTable';
+import TeacherTable, { type DrawerPreset } from '../components/TeacherTable';
 import { Alert, Empty, OverdueBadge, PageHeader, ResultBadge } from '../components/ui';
 import { formatThaiDate, levelOf } from '../lib/normalize';
 import { allClassrooms, allLevels, fmtNum, fmtPct, levelStats, roomStats, schoolStats, teacherStats, type GroupStats } from '../lib/stats';
+import { exportLevelsPdf, exportOverviewPdf, exportRoomPdf, exportTeacherPdf, exportTeachersPdf } from '../lib/pdf';
 import { exportAllStats, exportLevels, exportOverview, exportRooms, exportTeachers } from '../lib/statsExport';
 import { GRADE_RESULTS, type EnrollmentMap, type Filters, type GradeResult, type Row } from '../lib/types';
 
@@ -22,7 +23,7 @@ interface Props {
   enrollment: EnrollmentMap;
   goTracking: (f: Partial<Filters>) => void;
   goEnrollment: () => void;
-  goTeacher: (name: string) => void;
+  goTeacher: (name: string, preset?: DrawerPreset) => void;
 }
 
 /** ตัวกรองหน้าติดตามที่ตรงกับกลุ่ม */
@@ -53,6 +54,17 @@ export default function Dashboard({ rows, enrollment, goTracking, goEnrollment, 
       filters: filtersFor(group, result),
     });
 
+  const currentRoom = classrooms.includes(room) ? room : classrooms[0] ?? '';
+  const exportCurrentPdf = () => {
+    if (tab === 'overview') exportOverviewPdf(school, levelGroups);
+    else if (tab === 'levels') exportLevelsPdf(levelGroups, school);
+    else if (tab === 'rooms') {
+      const g = roomGroups.find((x) => x.key === currentRoom);
+      if (g) exportRoomPdf(g, roomGroups.filter((x) => levelOf(x.key) === levelOf(currentRoom)));
+    } else exportTeachersPdf(teachers);
+  };
+  const tabLabel = TABS.find((t) => t.id === tab)!.label;
+
   const exportCurrent = () => {
     if (tab === 'overview') exportOverview(school);
     else if (tab === 'levels') exportLevels(levelGroups, school);
@@ -67,8 +79,9 @@ export default function Dashboard({ rows, enrollment, goTracking, goEnrollment, 
         subtitle="นับนักเรียนไม่ซ้ำด้วยรหัสนักเรียน แยกจากจำนวนรายการรายวิชา · คลิกตัวเลขเพื่อดูรายชื่อ"
         actions={
           <>
-            <button className="btn-ghost" onClick={exportCurrent}>⬇ ส่งออก{TABS.find((t) => t.id === tab)!.label}</button>
-            <button className="btn-primary" onClick={() => exportAllStats(school, levelGroups, roomGroups, teachers)}>⬇ ส่งออกรายงานทั้งหมด</button>
+            <button className="btn-primary" onClick={exportCurrentPdf}>⬇ PDF {tab === 'rooms' && currentRoom ? `ห้อง ${currentRoom}` : tabLabel}</button>
+            <button className="btn-ghost" onClick={exportCurrent}>⬇ Excel {tabLabel}</button>
+            <button className="btn-ghost" onClick={() => exportAllStats(school, levelGroups, roomGroups, teachers)}>⬇ Excel ทั้งหมด</button>
           </>
         }
       />
@@ -109,8 +122,8 @@ export default function Dashboard({ rows, enrollment, goTracking, goEnrollment, 
           <div className="border-b border-slate-100 px-4 py-3 text-sm font-semibold">ครูผู้สอน ({teachers.length} คน)</div>
           <TeacherTable
             teachers={teachers}
-            onSelectTeacher={goTeacher}
-            onDrill={(t) => goTeacher(t.label)}
+            onOpen={goTeacher}
+            onExportPdf={(t) => exportTeacherPdf(t.label, t.subjects, t.rows, '')}
           />
           <p className="px-4 py-2 text-xs text-slate-500">ไม่มีร้อยละรายครู เพราะไม่มีจำนวนนักเรียนที่ครูแต่ละคนสอนทั้งหมด</p>
         </div>

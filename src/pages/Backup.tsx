@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { loadReportSettings, saveReportSettings, type ReportSettings } from '../lib/reportSettings';
 import { Alert, ConfirmDialog, PageHeader } from '../components/ui';
 import { exportBackup, readBackup, type Backup as BackupData } from '../lib/excel';
 import type { ColumnMapping } from '../lib/importMapping';
@@ -63,6 +64,8 @@ export default function Backup({ records, tracking, mapping, enrollment, meta, o
           </div>
         </div>
 
+        <ReportHeaderSettings />
+
         <div className="grid gap-4 md:grid-cols-2">
           <div className="card p-5">
             <div className="font-semibold">ส่งออกไฟล์สำรอง</div>
@@ -116,6 +119,35 @@ function Action({ title, desc, btn, danger, disabled, onClick }: { title: string
         <div className="text-xs text-slate-500">{desc}</div>
       </div>
       <button className={danger ? 'btn-danger' : 'btn-ghost'} disabled={disabled} onClick={onClick}>{btn}</button>
+    </div>
+  );
+}
+
+function ReportHeaderSettings() {
+  const [s, setS] = useState<ReportSettings>(loadReportSettings);
+  const [saved, setSaved] = useState(false);
+  const update = (patch: Partial<ReportSettings>) => {
+    setS({ ...s, ...patch });
+    setSaved(false);
+  };
+  return (
+    <div className="card p-5">
+      <div className="font-semibold">หัวรายงาน PDF</div>
+      <p className="mt-1 text-sm text-slate-500">แสดงที่หัวกระดาษทุกหน้าของรายงาน PDF</p>
+      <div className="mt-3 grid gap-3 sm:grid-cols-2">
+        <div>
+          <label className="label" htmlFor="rp-school">ชื่อโรงเรียน</label>
+          <input id="rp-school" className="input" value={s.schoolName} onChange={(e) => update({ schoolName: e.target.value })} />
+        </div>
+        <div>
+          <label className="label" htmlFor="rp-term">ภาคเรียน / ปีการศึกษา</label>
+          <input id="rp-term" className="input" value={s.termLabel} onChange={(e) => update({ termLabel: e.target.value })} />
+        </div>
+      </div>
+      <div className="mt-3 flex items-center gap-3">
+        <button className="btn-ghost" onClick={() => setSaved(saveReportSettings(s))}>บันทึกหัวรายงาน</button>
+        {saved && <span className="text-sm text-emerald-700">บันทึกแล้ว</span>}
+      </div>
     </div>
   );
 }

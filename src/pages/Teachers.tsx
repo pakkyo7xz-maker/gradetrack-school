@@ -1,29 +1,32 @@
 import { useMemo, useState } from 'react';
-import TeacherTable from '../components/TeacherTable';
+import TeacherDrawer from '../components/TeacherDrawer';
+import TeacherTable, { type DrawerPreset } from '../components/TeacherTable';
 import type { UpdateTracking } from '../components/TrackingTable';
 import { PageHeader } from '../components/ui';
 import { compareClassroom } from '../lib/normalize';
+import { exportTeacherPdf, exportTeachersPdf } from '../lib/pdf';
 import { teacherStats } from '../lib/stats';
+import { exportTeachers } from '../lib/statsExport';
 import type { Filters, Row } from '../lib/types';
-import TeacherDetail from './TeacherDetail';
+
+export interface TeacherFocus {
+  name: string;
+  preset?: DrawerPreset;
+}
 
 interface Props {
   rows: Row[];
-  selected: string;
-  setSelected: (name: string) => void;
+  focus: TeacherFocus | null;
+  setFocus: (f: TeacherFocus | null) => void;
   onUpdate: UpdateTracking;
   goTracking: (f: Partial<Filters>) => void;
 }
 
-export default function Teachers({ rows, selected, setSelected, onUpdate, goTracking }: Props) {
+export default function Teachers({ rows, focus, setFocus, onUpdate, goTracking }: Props) {
   const [q, setQ] = useState('');
   const all = useMemo(() => teacherStats(rows), [rows]);
-  const current = all.find((t) => t.label === selected);
-  const open = (name: string) => {
-    setSelected(name);
-    window.scrollTo({ top: 0 });
-  };
   const teachers = all.filter((t) => !q || t.label.toLowerCase().includes(q.toLowerCase()));
+  const current = focus ? all.find((t) => t.label === focus.name) : undefined;
 
   // ครูประจำชั้น (ถ้ามีในไฟล์)
   const homerooms = Object.entries(
@@ -33,19 +36,27 @@ export default function Teachers({ rows, selected, setSelected, onUpdate, goTrac
     }, {}),
   ).sort(([a], [b]) => compareClassroom(a, b));
 
-  if (current) return <TeacherDetail name={current.label} rows={current.rows} onBack={() => setSelected('')} onUpdate={onUpdate} goTracking={goTracking} />;
-
   return (
     <div>
-      <PageHeader title="ครูผู้สอน" subtitle="คลิกชื่อครูเพื่อดูว่านักเรียนคนไหนติดวิชาอะไร" />
+      <PageHeader
+        title="ครูผู้สอน"
+        subtitle="คลิกชื่อครูหรือตัวเลขเพื่อดูว่านักเรียนคนไหนติดวิชาอะไร · ตัวเลข 0 / ร / มส เป็นจำนวนรายการรายวิชา"
+        actions={
+          <>
+            <button className="btn-ghost" disabled={teachers.length === 0} onClick={() => exportTeachers(teachers)}>⬇ Excel</button>
+            <button className="btn-primary" disabled={teachers.length === 0} onClick={() => exportTeachersPdf(teachers)}>⬇ PDF สรุปครู ({teachers.length})</button>
+          </>
+        }
+      />
       <div className="card overflow-hidden">
         <div className="border-b border-slate-100 p-4">
-          <input className="input sm:max-w-xs" placeholder="ค้นหาชื่อครู…" value={q} onChange={(e) => setQ(e.target.value)} />
+          <label className="sr-only" htmlFor="teacher-q">ค้นหาชื่อครู</label>
+          <input id="teacher-q" className="input sm:max-w-xs" placeholder="ค้นหาชื่อครู…" value={q} onChange={(e) => setQ(e.target.value)} />
         </div>
         <TeacherTable
           teachers={teachers}
-          onSelectTeacher={open}
-          onDrill={(t) => open(t.label)}
+          onOpen={(name, preset) => setFocus({ name, preset })}
+          onExportPdf={(t) => exportTeacherPdf(t.label, t.subjects, t.rows, '')}
         />
       </div>
 
@@ -61,6 +72,18 @@ export default function Teachers({ rows, selected, setSelected, onUpdate, goTrac
             ))}
           </div>
         </div>
+      )}
+
+      {current && (
+        <TeacherDrawer
+          key={`${current.label}|${focus?.preset?.result ?? ''}|${focus?.preset?.status ?? ''}`}
+          teacher={current}
+          allRows={rows}
+          preset={focus?.preset}
+          onClose={() => setFocus(null)}
+          onUpdate={onUpdate}
+          goTracking={goTracking}
+        />
       )}
     </div>
   );

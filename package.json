@@ -11,6 +11,7 @@
     "build:web": "node scripts/build-web.mjs"
   },
   "devDependencies": {
+    "@types/pdfmake": "^0.2.11",
     "@types/react": "^18.3.31",
     "@types/react-dom": "^18.3.7",
     "@vitejs/plugin-react": "^4.7.0",
@@ -21,6 +22,7 @@
     "vite": "^5.4.21"
   },
   "dependencies": {
+    "pdfmake": "^0.2.15",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "xlsx": "^0.18.5"

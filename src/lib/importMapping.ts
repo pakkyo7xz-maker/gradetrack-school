@@ -84,6 +84,11 @@ export function autoDetectMapping(headers: string[], saved?: ColumnMapping, fiel
     const hit = norm.find(({ h, c }) => !used.has(h) && c.includes(p.a));
     if (hit) take(p.key, hit.h);
   }
+  // คอลัมน์ "ห้อง" อย่างเดียว (ไม่มีระดับชั้นแยก) มักเก็บค่าเต็ม เช่น "ม.1/1" → ใช้เป็นชั้น/ห้อง
+  if (mapping.room && !mapping.classroom && !mapping.level && fields.some((f) => f.key === 'classroom')) {
+    mapping.classroom = mapping.room;
+    delete mapping.room;
+  }
   return mapping;
 }
 
@@ -117,6 +122,12 @@ export function detectHeaderRow(rows: unknown[][], fields: FieldDef[] = FIELDS):
     }
   });
   return best;
+}
+
+/** ให้คะแนน Sheet ว่าเหมาะเป็นข้อมูลผลการเรียนแค่ไหน (ใช้เลือก Sheet อัตโนมัติ) */
+export function scoreGradeSheet(headers: string[], m: ColumnMapping): number {
+  if (headers.length === 0) return -1;
+  return (missingFields(m).length === 0 ? 100 : 0) + Object.values(m).filter(Boolean).length + (m.teacher ? 5 : 0);
 }
 
 export interface ParseResult {

@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import type { WorkBook } from 'xlsx';
 import { Alert, ConfirmDialog, PageHeader, ResultBadge } from '../components/ui';
 import { readWorkbook, rowsFromMatrix, sheetMatrix } from '../lib/excel';
-import { FIELDS, autoDetectMapping, detectHeaderRow, missingFields, optionalWarnings, parseRows, type ColumnMapping, type FieldKey } from '../lib/importMapping';
+import { FIELDS, autoDetectMapping, detectHeaderRow, missingFields, optionalWarnings, parseRows, scoreGradeSheet, type ColumnMapping, type FieldKey } from '../lib/importMapping';
 import { cellText } from '../lib/normalize';
 import type { EnrollmentMap, GradeRecord, TrackingMap } from '../lib/types';
 import { validateRecords } from '../lib/validation';
@@ -36,7 +36,9 @@ export default function Import({ existingCount, isSample, tracking, enrollment, 
   const missing = missingFields(mapping);
   const warnings = optionalWarnings(mapping);
   const withTracking = parsed ? parsed.records.filter((r) => tracking[r.key]).length : 0;
-  const issues = useMemo(() => (parsed && missing.length === 0 ? validateRecords(parsed.records, enrollment) : []), [parsed, missing.length, enrollment]);
+  // เทียบกับจำนวนนักเรียนหลังนำเข้า (จำนวนตัวอย่างจะถูกล้างเมื่อนำเข้าข้อมูลจริง)
+  const realEnrollment = useMemo(() => Object.fromEntries(Object.entries(enrollment).filter(([, v]) => v.source !== 'sample')), [enrollment]);
+  const issues = useMemo(() => (parsed && missing.length === 0 ? validateRecords(parsed.records, realEnrollment) : []), [parsed, missing.length, realEnrollment]);
   const hasErrors = issues.some((i) => i.level === 'error');
   const [ackErrors, setAckErrors] = useState(false);
 
@@ -65,7 +67,13 @@ export default function Import({ existingCount, isSample, tracking, enrollment, 
       if (!book.SheetNames.length) throw new Error('ไม่พบ Sheet ในไฟล์');
       setWb(book);
       setFileName(file.name);
-      selectSheet(book.SheetNames[0], book);
+      // เลือก Sheet ที่มีคอลัมน์ครบที่สุดให้อัตโนมัติ (เช่น Sheet แบบ 1 แถวต่อ 1 วิชา)
+      const best = book.SheetNames.map((n) => {
+        const m = sheetMatrix(book, n);
+        const { headers } = rowsFromMatrix(m, detectHeaderRow(m));
+        return { n, score: scoreGradeSheet(headers, autoDetectMapping(headers, savedMapping)) };
+      }).reduce((a, b) => (b.score > a.score ? b : a));
+      selectSheet(best.n, book);
     } catch (e) {
       setWb(null);
       setError(e instanceof Error ? e.message : 'อ่านไฟล์ไม่สำเร็จ');

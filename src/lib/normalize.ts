@@ -13,9 +13,9 @@ export function cellText(v: unknown): string {
     .trim();
 }
 
-/** ใช้เปรียบเทียบหัวคอลัมน์/คีย์: ตัดช่องว่าง จุด และตัวพิมพ์ */
+/** ใช้เปรียบเทียบหัวคอลัมน์/คีย์: ตัดช่องว่าง จุด ขีด (รวม – —) และตัวพิมพ์ */
 export function compact(s: string): string {
-  return cellText(s).toLowerCase().replace(/[\s._\-:()]/g, '');
+  return cellText(s).toLowerCase().replace(/[\s._\-–—:()]/g, '');
 }
 
 /** แปลงผลการเรียนเป็น 0 / ร / มส — คืน null ถ้าไม่ใช่ 3 ประเภทนี้ (เช่น เกรด 1-4) */
@@ -33,7 +33,7 @@ export function normalizeResult(v: unknown): GradeResult | null {
  */
 export function normalizeClassroom(classroom: unknown, level?: unknown, room?: unknown): string {
   const raw = cellText(classroom);
-  const m = raw.match(/(\d)\s*\/\s*(\d{1,2})/);
+  const m = raw.match(/(\d)\s*\/\s*(\d{1,2})/) ?? (raw ? null : cellText(room).match(/(\d)\s*\/\s*(\d{1,2})/));
   if (m) return `ม.${m[1]}/${Number(m[2])}`;
   const lv = cellText(level).match(/(\d)/);
   const rm = cellText(room).match(/(\d{1,2})\s*$/) ?? cellText(room).match(/(\d{1,2})/);

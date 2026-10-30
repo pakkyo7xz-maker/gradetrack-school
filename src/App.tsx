@@ -26,12 +26,16 @@ const NAV: { id: Page; label: string; icon: string }[] = [
   { id: 'backup', label: 'สำรองข้อมูล', icon: '💾' },
 ];
 
+/** จำนวนนักเรียนตัวอย่างห้ามใช้กับข้อมูลจริง (จะกลายเป็นตัวหารปลอม) */
+const withoutSampleEnrollment = (e: EnrollmentMap): EnrollmentMap => Object.fromEntries(Object.entries(e).filter(([, v]) => v.source !== 'sample'));
+
 function initialState() {
   const stored = store.loadRecords();
   const meta = store.loadMeta();
   if (stored) {
     // ผู้ใช้เวอร์ชันก่อนที่ยังใช้ข้อมูลตัวอย่าง: เติมจำนวนนักเรียนตัวอย่างให้
-    const enrollment = store.loadEnrollment() ?? (meta?.source === 'sample' ? sampleEnrollment() : {});
+    const saved = store.loadEnrollment();
+    const enrollment = meta?.source === 'sample' ? saved ?? sampleEnrollment() : withoutSampleEnrollment(saved ?? {});
     return { records: stored, tracking: store.loadTracking(), meta, enrollment };
   }
   // ครั้งแรก: แสดงข้อมูลตัวอย่าง
@@ -85,6 +89,7 @@ export default function App() {
       newRecords.forEach((r) => map.set(r.key, r));
       return [...map.values()];
     });
+    setEnrollment(withoutSampleEnrollment);
     setMapping(m);
     setMeta({ source: 'import', fileName, importedAt: new Date().toISOString() });
     setFilters(emptyFilters());

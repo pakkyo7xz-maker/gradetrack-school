@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react';
 import { formatThaiDate } from '../lib/normalize';
 import { STATUSES, type Row, type Tracking, type TrackingStatus } from '../lib/types';
 import { Empty, OverdueBadge, ResultBadge, STATUS_STYLE } from './ui';
@@ -47,8 +48,14 @@ function NoteInput({ row, onUpdate }: { row: Row; onUpdate: UpdateTracking }) {
   );
 }
 
-export default function TrackingTable({ rows, onUpdate, hideClassroom }: { rows: Row[]; onUpdate: UpdateTracking; hideClassroom?: boolean }) {
-  if (rows.length === 0) return <Empty>ไม่พบรายการที่ตรงกับเงื่อนไข</Empty>;
+const PAGE = 200;
+
+export default function TrackingTable({ rows: allRows, onUpdate, hideClassroom }: { rows: Row[]; onUpdate: UpdateTracking; hideClassroom?: boolean }) {
+  // แสดงทีละ 200 รายการ เพื่อให้หน้าเร็วเมื่อข้อมูลมาก (ตัวกรอง/ส่งออกยังใช้ทุกรายการ)
+  const [limit, setLimit] = useState(PAGE);
+  useEffect(() => setLimit(PAGE), [allRows.length]);
+  const rows = allRows.slice(0, limit);
+  if (allRows.length === 0) return <Empty>ไม่พบรายการที่ตรงกับเงื่อนไข</Empty>;
   return (
     <>
       {/* คอมพิวเตอร์: ตาราง */}
@@ -115,6 +122,13 @@ export default function TrackingTable({ rows, onUpdate, hideClassroom }: { rows:
           </div>
         ))}
       </div>
+      {allRows.length > limit && (
+        <div className="border-t border-slate-100 p-3 text-center">
+          <button className="btn-ghost" onClick={() => setLimit(limit + PAGE)}>
+            แสดงเพิ่ม ({limit.toLocaleString('th-TH')} จาก {allRows.length.toLocaleString('th-TH')} รายการ)
+          </button>
+        </div>
+      )}
     </>
   );
 }
